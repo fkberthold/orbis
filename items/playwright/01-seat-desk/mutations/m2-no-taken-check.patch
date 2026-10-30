@@ -1,0 +1,18 @@
+diff --git a/app.js b/app.js
+index 206bf4b..3d01bff 100644
+--- a/app.js
++++ b/app.js
+@@ -49,13 +49,6 @@ async function reserve(event) {
+ 
+   await settle();
+ 
+-  if (TAKEN.has(seat)) {
+-    el("error").textContent = "Seat " + seat + " is already taken.";
+-    el("status").textContent = "";
+-    el("reserve").disabled = false;
+-    return;
+-  }
+-
+   TAKEN.add(seat);
+ 
+   const row = document.createElement("li");

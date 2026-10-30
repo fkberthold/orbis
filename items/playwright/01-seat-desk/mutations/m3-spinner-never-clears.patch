@@ -1,0 +1,12 @@
+diff --git a/app.js b/app.js
+index 206bf4b..fc78eb7 100644
+--- a/app.js
++++ b/app.js
+@@ -64,7 +64,6 @@ async function reserve(event) {
+   el("reservations").appendChild(row);
+ 
+   el("banner").textContent = "Reserved " + seat + " for " + name + ".";
+-  el("status").textContent = "";
+   el("reserve").disabled = false;
+ }
+ 

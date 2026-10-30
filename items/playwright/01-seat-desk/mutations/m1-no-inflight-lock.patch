@@ -1,0 +1,14 @@
+diff --git a/app.js b/app.js
+index 206bf4b..6327b20 100644
+--- a/app.js
++++ b/app.js
+@@ -42,9 +42,6 @@ async function reserve(event) {
+ 
+   const seat = el("seat").value;
+ 
+-  // The button stays down for the whole round trip, so a second click during
+-  // the wait cannot start a second reservation.
+-  el("reserve").disabled = true;
+   el("status").textContent = "Reserving...";
+ 
+   await settle();

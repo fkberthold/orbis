@@ -1,0 +1,24 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 2rem auto;
+  max-width: 34rem;
+  line-height: 1.5;
+}
+
+form {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+#reserve {
+  grid-column: 2;
+  justify-self: start;
+  padding: 0.4rem 1.2rem;
+}
+
+#error { color: #a11; }
+#banner { color: #161; }
+#status { color: #555; font-style: italic; }

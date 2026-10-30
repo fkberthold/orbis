@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dockside Seat Desk</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main>
+  <h1 id="heading">Dockside Seat Desk</h1>
+  <p id="intro">Pick a seat and reserve it. The desk takes a moment to confirm.</p>
+
+  <form id="desk" autocomplete="off">
+    <label for="name">Name</label>
+    <input id="name" name="name" type="text">
+
+    <label for="seat">Seat</label>
+    <select id="seat" name="seat"></select>
+
+    <button id="reserve" type="submit">Reserve</button>
+  </form>
+
+  <p id="status" role="status"></p>
+  <p id="error" role="alert"></p>
+  <p id="banner"></p>
+
+  <h2>Reservations</h2>
+  <ul id="reservations"></ul>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
