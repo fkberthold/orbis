@@ -51,15 +51,15 @@ TypeScript is new, and give way to blank files as the steps go on.
 | 4 | test-assertions, actionability | guide from lesson 02 (proving nothing happened) | **item 02, label form** (exists) |
 | 5 | running-tests, codegen-intro, test-ui-mode, trace-viewer-intro, debug | guide | new: read a trace of a failing test and say why it failed |
 | 6 | navigations | guide | **item 04, ferry booking** (exists) |
-| 7 | test-configuration, test-use-options, test-projects | guide | new, and the instrument is open (see below) |
+| 7 | test-configuration, test-use-options, test-projects | guide | ungraded: write the config, then check it against a worked one |
 | 8 | test-fixtures, test-global-setup-teardown | guide, plus the TypeScript for `test.extend<...>` | new: a fixture that sets the app up |
 | 9 | pom | guide, plus TypeScript classes | new: refactor a test into a page object, and the gate checks it still discriminates |
 | 10 | auth | guide | new: sign in once and reuse it |
 | 11 | api-testing | guide | new: set up data through the API, then check the page |
 | 12 | mock, network | guide from lesson 03 (what a stub can't see) | **item 03, parts lookup** (exists, moved down) |
 | 13 | test-timeouts, test-retries, trace-viewer | **Diagnosing a flaky test**, which nothing covers | new: tell an app bug from a test bug with a trace |
-| 14 | test-parallel, test-sharding | guide | new, and the instrument is open |
-| 15 | ci-intro, ci | guide | new, and the instrument is open |
+| 14 | test-parallel, test-sharding | guide | ungraded: shard a suite, then check against a worked one |
+| 15 | ci-intro, ci | guide | ungraded: set up CI, then check against a worked one |
 | 16 | best-practices | **Keeping a suite healthy**: layout, test data, tags, reviewing tests | capstone: a small suite for a bigger app |
 
 Every page name in the read column is under `https://playwright.dev/docs/`.
@@ -91,14 +91,16 @@ teaches it is done. Every drill names the step that teaches it, by path. In
 tla-puzzles a drill with no pointer to its lesson took three hours against a
 ten-minute budget.
 
-## Open questions
+## Settled with Frank, 2026-10-31
 
-1. **Does the order look right?** In particular, locators before assertions,
-   and mocking moved after structure.
-2. **Steps 7, 14 and 15 have no instrument yet.** A broken copy of an app can't
-   tell whether a config, a sharding setup or a CI file is right. They might
-   need a different check, or be guide-only with no graded practice.
+1. **The order stands.** Locators come before assertions, and mocking comes
+   after structure.
+2. **Steps 7, 14 and 15 aren't graded.** A broken copy of an app can't judge a
+   config, a sharding setup or a CI file. Frank: "For these I honestly suggest
+   not worrying about a grade for the user at all, but focussing on making a
+   good version with spoiler tags to check myself after the fact." So each one
+   has a carefully made worked version behind the same line-by-line reveal the
+   other steps use, and the learner checks their own after trying.
 3. **The existing lessons 01 to 03** become the guides for steps 2, 4 and 12.
    They use the discouraged `page.click(selector)` style and say ids first,
-   both of which get fixed (bead orb-eei.17) whatever the order turns out to
-   be.
+   which bead orb-eei.17 fixes.
