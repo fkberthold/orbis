@@ -1,0 +1,13 @@
+diff --git a/app.js b/app.js
+index 53b87d4..6cc6f67 100644
+--- a/app.js
++++ b/app.js
+@@ -104,7 +104,7 @@ function drawReview() {
+   el("confirm").addEventListener("click", function () {
+     // Confirming the same trip again finds the booking already made rather
+     // than making a second one.
+-    if (!booked || booked.key !== tripKey()) {
++    {
+       booked = { key: tripKey(), ref: "FB-" + nextRef };
+       nextRef += 1;
+       bookings.push({ ref: booked.ref, label: CROSSINGS[trip.crossing].label });

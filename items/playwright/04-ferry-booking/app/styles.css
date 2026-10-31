@@ -1,0 +1,40 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 2rem auto;
+  max-width: 34rem;
+  line-height: 1.5;
+}
+
+fieldset {
+  border: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+fieldset label {
+  display: block;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: 0.25rem 1rem;
+}
+
+dd { margin: 0; }
+
+button {
+  padding: 0.4rem 1.2rem;
+  margin-top: 0.5rem;
+}
+
+#error { color: #a11; }
+#reference { color: #161; font-weight: bold; }

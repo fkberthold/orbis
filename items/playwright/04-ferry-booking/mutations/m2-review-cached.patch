@@ -1,0 +1,26 @@
+diff --git a/app.js b/app.js
+index 53b87d4..fef1a22 100644
+--- a/app.js
++++ b/app.js
+@@ -89,17 +89,18 @@ function drawPassengers() {
+   });
+ }
+ 
++let reviewHtml = null;
++
+ function drawReview() {
+-  // Built from the trip as it stands now, so a change made after going Back
+-  // shows up here.
+   const c = CROSSINGS[trip.crossing];
+-  el("step").innerHTML =
++  if (reviewHtml === null) reviewHtml =
+     "<h2 id=\"step-title\">3. Review and confirm</h2><dl>" +
+     "<dt>Crossing</dt><dd id=\"review-crossing\">" + c.label + "</dd>" +
+     "<dt>Lead passenger</dt><dd id=\"review-lead\">" + trip.lead + "</dd>" +
+     "<dt>Passengers</dt><dd id=\"review-count\">" + trip.count + "</dd>" +
+     "<dt>Fare</dt><dd id=\"review-fare\">$" + fare() + "</dd>" +
+     "</dl><button id=\"confirm\" type=\"button\">Confirm</button>";
++  el("step").innerHTML = reviewHtml;
+ 
+   el("confirm").addEventListener("click", function () {
+     // Confirming the same trip again finds the booking already made rather

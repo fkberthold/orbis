@@ -1,0 +1,13 @@
+diff --git a/app.js b/app.js
+index 53b87d4..a8d9d94 100644
+--- a/app.js
++++ b/app.js
+@@ -129,7 +129,7 @@ function drawDone() {
+ // was skipped to.
+ function allowed(step) {
+   if (step === "crossing") return true;
+-  if (step === "passengers") return trip.crossing !== "";
++  if (step === "passengers") return true;
+   if (step === "review") return trip.crossing !== "" && trip.lead !== "";
+   if (step === "done") return booked !== null;
+   return false;

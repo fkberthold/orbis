@@ -1,0 +1,14 @@
+diff --git a/app.js b/app.js
+index 53b87d4..6fec233 100644
+--- a/app.js
++++ b/app.js
+@@ -73,9 +73,6 @@ function drawPassengers() {
+   html += "</select></div><button id=\"next\" type=\"button\">Next</button>";
+   el("step").innerHTML = html;
+ 
+-  // Same as the crossing step: what was entered goes back in.
+-  el("lead").value = trip.lead;
+-  el("count").value = trip.count;
+ 
+   el("next").addEventListener("click", function () {
+     const lead = el("lead").value.trim();
