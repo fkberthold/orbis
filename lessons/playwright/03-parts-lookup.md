@@ -5,13 +5,14 @@ a URL pattern and a handler, and every matching request goes to the handler
 instead of the network. The handler can let the request through, change it, or
 answer it outright.
 
-```python
-def fail(route):
-    route.fulfill(status=503, json={"error": "down"})
-
-page.route("**/api/orders", fail)
-page.goto("/")
+```ts
+await page.route('**/api/orders', route =>
+  route.fulfill({ status: 503, json: { error: 'down' } }));
+await page.goto('/');
 ```
+
+The handler is a short function, `route => ...`, that Playwright calls with
+each matching request. `route.fulfill` answers it.
 
 Two details shape how a stubbed test is written. The route has to be in place
 before the request goes out, so for anything the page fetches on load it goes
