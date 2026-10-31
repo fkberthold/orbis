@@ -1,0 +1,18 @@
+diff --git a/app.js b/app.js
+index 222238c..af9d742 100644
+--- a/app.js
++++ b/app.js
+@@ -19,10 +19,10 @@ function settle() {
+ }
+ 
+ function matches(part, text) {
+-  const wanted = text.toLowerCase();
++  const wanted = text;
+   return (
+-    part.name.toLowerCase().includes(wanted) ||
+-    part.number.toLowerCase().includes(wanted)
++    part.name.includes(wanted) ||
++    part.number.includes(wanted)
+   );
+ }
+ 

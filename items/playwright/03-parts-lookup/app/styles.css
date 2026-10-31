@@ -1,0 +1,31 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 2rem auto;
+  max-width: 34rem;
+  line-height: 1.5;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+}
+
+#search {
+  width: 100%;
+  padding: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+#results {
+  list-style: none;
+  padding: 0;
+}
+
+.part .number {
+  font-family: ui-monospace, monospace;
+  margin-right: 0.5rem;
+}
+
+#error { color: #a11; }
+#status { color: #555; font-style: italic; }
+#empty { color: #555; }

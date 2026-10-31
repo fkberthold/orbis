@@ -1,0 +1,14 @@
+diff --git a/app.js b/app.js
+index 222238c..acf670b 100644
+--- a/app.js
++++ b/app.js
+@@ -49,9 +49,6 @@ function render() {
+   });
+ 
+   el("results").replaceChildren(...shown.map(row));
+-
+-  el("empty").textContent =
+-    shown.length === 0 ? 'No parts match "' + text + '".' : "";
+ }
+ 
+ async function load() {

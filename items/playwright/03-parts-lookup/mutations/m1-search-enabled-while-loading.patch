@@ -1,0 +1,13 @@
+diff --git a/index.html b/index.html
+index ee11a96..6f0706f 100644
+--- a/index.html
++++ b/index.html
+@@ -12,7 +12,7 @@
+   <p id="intro">Search the shop's parts catalog by name or part number.</p>
+ 
+   <label for="search">Search</label>
+-  <input id="search" name="search" type="search" autocomplete="off" disabled>
++  <input id="search" name="search" type="search" autocomplete="off">
+ 
+   <p id="status" role="status"></p>
+   <p id="error" role="alert"></p>

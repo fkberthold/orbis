@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Northgate Parts Lookup</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main>
+  <h1 id="heading">Northgate Parts Lookup</h1>
+  <p id="intro">Search the shop's parts catalog by name or part number.</p>
+
+  <label for="search">Search</label>
+  <input id="search" name="search" type="search" autocomplete="off" disabled>
+
+  <p id="status" role="status"></p>
+  <p id="error" role="alert"></p>
+  <p id="empty"></p>
+
+  <ul id="results"></ul>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+diff --git a/app.js b/app.js
+index 222238c..6aedc39 100644
+--- a/app.js
++++ b/app.js
+@@ -60,11 +60,6 @@ async function load() {
+   let parts = null;
+   try {
+     const response = await fetch("parts.json");
+-    // fetch only throws when the request gets no answer at all. A 500 is an
+-    // answer, so it has to be checked here or it gets read as a catalog.
+-    if (!response.ok) {
+-      throw new Error("catalog answered " + response.status);
+-    }
+     parts = await response.json();
+   } catch (problem) {
+     parts = null;

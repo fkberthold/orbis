@@ -1,0 +1,10 @@
+[
+  {"number": "BRK-1042", "name": "Front brake pad set"},
+  {"number": "BRK-1077", "name": "Rear brake rotor"},
+  {"number": "FLT-2010", "name": "Oil filter"},
+  {"number": "FLT-2033", "name": "Cabin air filter"},
+  {"number": "BLT-3105", "name": "Serpentine belt"},
+  {"number": "SPK-4001", "name": "Spark plug, iridium"},
+  {"number": "WPR-5020", "name": "Wiper blade, 22 inch"},
+  {"number": "BAT-6100", "name": "Battery, group 35"}
+]

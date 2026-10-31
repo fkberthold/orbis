@@ -1,0 +1,15 @@
+diff --git a/app.js b/app.js
+index 222238c..35983cf 100644
+--- a/app.js
++++ b/app.js
+@@ -77,10 +77,6 @@ async function load() {
+     el("error").textContent = "Couldn't load the parts catalog.";
+     return;
+   }
+-  if (parts.length === 0) {
+-    el("error").textContent = "The parts catalog is empty.";
+-    return;
+-  }
+ 
+   catalog = parts;
+   // The box stays off until there's something to search, so nobody types

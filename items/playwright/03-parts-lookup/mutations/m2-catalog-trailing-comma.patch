@@ -1,0 +1,11 @@
+diff --git a/parts.json b/parts.json
+index 1d08de5..541c0fe 100644
+--- a/parts.json
++++ b/parts.json
+@@ -6,5 +6,5 @@
+   {"number": "BLT-3105", "name": "Serpentine belt"},
+   {"number": "SPK-4001", "name": "Spark plug, iridium"},
+   {"number": "WPR-5020", "name": "Wiper blade, 22 inch"},
+-  {"number": "BAT-6100", "name": "Battery, group 35"}
++  {"number": "BAT-6100", "name": "Battery, group 35"},
+ ]
