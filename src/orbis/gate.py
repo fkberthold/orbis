@@ -177,19 +177,83 @@ def command_selfcheck(args):
     return 0
 
 
+def command_filter(args):
+    """Sort a generated mutation set by what the reference makes of it.
+
+    The gate fails a generated set by design. G2 rejects anything the
+    reference is silent on and G3 rejects a shared vector, and a set nobody
+    picked by hand will have both. So this reports and leaves the call open.
+
+    Silent isn't thrown away. On seat-desk (orb-eei.1) every silent mutation
+    was a real bug in behavior the reference never touched, so a silent one
+    is either outside the rules or a hole in the reference. Which of those it
+    is belongs to the author, and so does which member of a group to keep.
+    """
+    item = Item(args.item)
+    if args.mutations:
+        item.mutations = sorted(pathlib.Path(args.mutations).glob("*.patch"))
+    item.check()
+
+    runs = grade(item, item.reference, browsers_path())
+    report(item, item.reference, runs)
+    real, mutants = runs[0], runs[1:]
+    if real.cell != verdict.SILENT:
+        print(f"FILTER FAIL: the reference is {real.cell} against the real app,")
+        print("so nothing it says about a mutation can be trusted.")
+        return 1
+
+    groups = {}
+    silent, other = [], []
+    for run in mutants:
+        if run.cell == verdict.CATCHES:
+            groups.setdefault(run.vector, []).append(run)
+        elif run.cell == verdict.SILENT:
+            silent.append(run)
+        else:
+            other.append(run)
+
+    print(f"CAUGHT, {len(groups)} distinct vector(s). Keep one per group:")
+    for vector, members in groups.items():
+        print(f"  {' '.join(vector)}")
+        for run in members:
+            print(f"      {run.environment}")
+    print()
+    print(f"SILENT, {len(silent)}. Outside the rules, or a hole in the reference:")
+    for run in silent:
+        print(f"      {run.environment}")
+    print()
+    print(f"NO VERDICT, {len(other)}. It didn't apply, or the run broke:")
+    for run in other:
+        note = " / ".join(run.note.splitlines())
+        print(f"      {run.environment:<36}{run.cell:<13}{note}")
+    print()
+    print(
+        f"FILTER {len(mutants)} mutation(s): {len(groups)} group(s), "
+        f"{len(silent)} silent, {len(other)} without a verdict"
+    )
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="orbis.gate")
     parser.add_argument(
-        "command", choices=["gate", "selfcheck"],
-        help="gate grades one candidate, selfcheck proves the gate can fail",
+        "command", choices=["gate", "selfcheck", "filter"],
+        help="gate grades one candidate, selfcheck proves the gate can fail, "
+             "filter sorts a generated mutation set",
     )
     parser.add_argument("item", help="path to an item directory")
     parser.add_argument(
         "--candidate", help="grade this file instead of the item's reference"
     )
+    parser.add_argument(
+        "--mutations",
+        help="filter only: read the patches from this directory instead",
+    )
     args = parser.parse_args(argv)
     if args.command == "gate":
         return command_gate(args)
+    if args.command == "filter":
+        return command_filter(args)
     return command_selfcheck(args)
 
 

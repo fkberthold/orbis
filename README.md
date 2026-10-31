@@ -69,7 +69,7 @@ else matters if that is false. So it gets tested first, with one item, by hand.
       environment.py   copy the app, apply a patch, serve it
       tracing.py       count the assertions a run actually executed
       runner.py        one candidate against one environment
-      gate.py          the three conditions, and a selfcheck
+      gate.py          the three conditions, a selfcheck, and a filter
 
 ## Running it
 
@@ -85,7 +85,14 @@ uv run python -m orbis.gate gate items/playwright/01-seat-desk
 
 # prove the gate can fail, by running the candidates it must reject
 uv run python -m orbis.gate selfcheck items/playwright/01-seat-desk
+
+# sort a generated set of patches by what the reference makes of each one
+uv run python -m orbis.gate filter items/playwright/01-seat-desk --mutations <dir>
 ```
+
+`filter` reports rather than judging. It groups the caught patches by vector,
+and you keep one per group. It lists the silent ones separately, since a silent
+patch is either outside the rules or a hole in the reference.
 
 ## Measured, 2026-10-30
 
