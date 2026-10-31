@@ -1,0 +1,30 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 2rem auto;
+  max-width: 36rem;
+  line-height: 1.5;
+}
+
+form {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 0.25rem 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.field-error {
+  grid-column: 2;
+  margin: 0 0 0.5rem;
+  min-height: 1.2em;
+  color: #a11;
+  font-size: 0.9rem;
+}
+
+#print {
+  grid-column: 2;
+  justify-self: start;
+  padding: 0.4rem 1.2rem;
+}
+
+#status { color: #555; font-style: italic; }

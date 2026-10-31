@@ -1,0 +1,10 @@
+--- a/app.js
++++ b/app.js
+@@ -95,7 +95,6 @@
+ 
+   if (Object.keys(errors).length === 0) {
+     printLabel(label);
+-    resetForm();
+   }
+ 
+   el("status").textContent = "";

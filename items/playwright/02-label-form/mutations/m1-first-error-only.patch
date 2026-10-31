@@ -1,0 +1,11 @@
+--- a/app.js
++++ b/app.js
+@@ -89,7 +89,7 @@
+   await check();
+ 
+   const errors = validate(label);
+-  for (const field of Object.keys(errors)) {
++  for (const field of Object.keys(errors).slice(0, 1)) {
+     el(field + "-error").textContent = errors[field];
+   }
+ 

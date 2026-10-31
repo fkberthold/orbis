@@ -1,0 +1,11 @@
+--- a/app.js
++++ b/app.js
+@@ -38,7 +38,7 @@
+   }
+ 
+   const weightOk = Number.isFinite(label.weight) &&
+-    label.weight > 0 && label.weight <= MAX_KG;
++    label.weight > 0 && label.weight < MAX_KG;
+   if (!weightOk) {
+     errors.weight = "Weight must be over 0 and at most 30 kg.";
+   }

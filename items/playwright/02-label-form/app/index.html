@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Northgate Label Desk</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main>
+  <h1 id="heading">Northgate Label Desk</h1>
+  <p id="intro">Fill in the parcel and print its label. The desk checks it first.</p>
+
+  <form id="label-form" autocomplete="off" novalidate>
+    <label for="recipient">Recipient</label>
+    <input id="recipient" name="recipient" type="text">
+    <p id="recipient-error" class="field-error"></p>
+
+    <label for="postcode">Postcode</label>
+    <input id="postcode" name="postcode" type="text" inputmode="numeric">
+    <p id="postcode-error" class="field-error"></p>
+
+    <label for="weight">Weight (kg)</label>
+    <input id="weight" name="weight" type="text" inputmode="decimal">
+    <p id="weight-error" class="field-error"></p>
+
+    <label for="service">Service</label>
+    <select id="service" name="service">
+      <option value="Standard">Standard</option>
+      <option value="Express">Express</option>
+    </select>
+    <p id="service-error" class="field-error"></p>
+
+    <button id="print" type="submit">Print label</button>
+  </form>
+
+  <p id="status" role="status"></p>
+
+  <h2>Printed labels</h2>
+  <ul id="labels"></ul>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

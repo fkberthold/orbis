@@ -1,0 +1,11 @@
+--- a/app.js
++++ b/app.js
+@@ -45,7 +45,7 @@
+ 
+   // Only a weight that's fine on its own gets measured against Express, so a
+   // bad weight is reported once, under the weight.
+-  if (weightOk && label.service === "Express" && label.weight > EXPRESS_MAX_KG) {
++  if (weightOk && label.service === "Express" && label.weight >= EXPRESS_MAX_KG) {
+     errors.service = "Express takes 5 kg or less.";
+   }
+ 
