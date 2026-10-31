@@ -1,0 +1,23 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 2rem auto;
+  max-width: 38rem;
+  line-height: 1.5;
+}
+
+#queue {
+  list-style: none;
+  padding: 0;
+}
+
+.job {
+  display: grid;
+  grid-template-columns: 4rem 1fr 6rem 6rem 5rem;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.ticket { color: #555; font-variant-numeric: tabular-nums; }
+.customer { color: #555; }

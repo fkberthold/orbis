@@ -1,0 +1,13 @@
+diff --git a/app.js b/app.js
+index 0b9163c..e67175a 100644
+--- a/app.js
++++ b/app.js
+@@ -25,7 +25,7 @@ function queueOrder(a, b) {
+   if (RANK[a.priority] !== RANK[b.priority]) {
+     return RANK[a.priority] - RANK[b.priority];
+   }
+-  return a.ticket - b.ticket;
++  return b.ticket - a.ticket;
+ }
+ 
+ function cell(tag, className, text) {

@@ -1,0 +1,12 @@
+diff --git a/app.js b/app.js
+index 0b9163c..5d76561 100644
+--- a/app.js
++++ b/app.js
+@@ -80,7 +80,6 @@ function changePriority(event) {
+   }
+   const job = jobFor(event.target.closest("li.job"));
+   job.priority = event.target.value;
+-  render();
+ }
+ 
+ function finish(event) {

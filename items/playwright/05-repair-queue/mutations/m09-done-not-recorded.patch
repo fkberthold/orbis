@@ -1,0 +1,12 @@
+diff --git a/app.js b/app.js
+index 0b9163c..a6ffcf2 100644
+--- a/app.js
++++ b/app.js
+@@ -96,7 +96,6 @@ function finish(event) {
+   }
+ 
+   jobs.splice(jobs.indexOf(job), 1);
+-  el("done").appendChild(cell("li", "done", label + " (" + job.customer + ")"));
+   render();
+ }
+ 

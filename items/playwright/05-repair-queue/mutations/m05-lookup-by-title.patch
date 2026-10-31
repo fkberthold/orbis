@@ -1,0 +1,16 @@
+diff --git a/app.js b/app.js
+index 0b9163c..afb32bd 100644
+--- a/app.js
++++ b/app.js
+@@ -68,9 +68,9 @@ function render() {
+ // The row carries its ticket, and the ticket is the only thing that names one
+ // job. Two rows can share everything else.
+ function jobFor(li) {
+-  const ticket = Number(li.dataset.ticket);
++  const title = li.querySelector(".title").textContent;
+   return jobs.find(function (job) {
+-    return job.ticket === ticket;
++    return job.title === title;
+   });
+ }
+ 

@@ -1,0 +1,15 @@
+diff --git a/app.js b/app.js
+index 0b9163c..3d28853 100644
+--- a/app.js
++++ b/app.js
+@@ -91,9 +91,7 @@ function finish(event) {
+   const label = "#" + job.ticket + " " + job.title;
+ 
+   // A native confirm, so the page stops until somebody answers it.
+-  if (!window.confirm("Finish " + label + " for " + job.customer + "?")) {
+-    return;
+-  }
++  window.confirm("Finish " + label + " for " + job.customer + "?");
+ 
+   jobs.splice(jobs.indexOf(job), 1);
+   el("done").appendChild(cell("li", "done", label + " (" + job.customer + ")"));
