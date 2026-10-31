@@ -7,7 +7,7 @@ forward is easy. The interesting behavior is what happens when you go back, or
 skip ahead.
 
 Write Playwright tests that hold the booking to the rules below. "Back" always
-means the browser's Back button, which is `page.go_back()`. The app has no Back
+means the browser's Back button, which is `page.goBack()`. The app has no Back
 button of its own.
 
 ## The rules
@@ -31,11 +31,12 @@ button of its own.
 
 ## What you are given
 
-- `app/` is the booking itself. Read it if you want to.
-- Your tests run against a `--base-url`, so `page.goto("/")` reaches it, and
-  `page.goto("/#/review")` opens the review step by its address.
-- `page` is the pytest-playwright fixture. Each test gets a fresh one, so
-  nothing entered in one test carries into the next.
+- The booking itself, running live. Its address is on this page, under The app.
+- Write your tests in TypeScript with `@playwright/test`, in a file ending
+  `.spec.ts` under `learner/mine/`.
+- Each test gets a fresh `page`, and `await page.goto('/')` opens the booking.
+  `await page.goto('/#/review')` opens the review step by its address. Nothing
+  else is set up for you, and nothing entered in one test carries into the next.
 
 ## How this is graded
 
