@@ -156,6 +156,23 @@ for item in "${ITEMS[@]}"; do
   fi
 done
 
+# ---------------------------------------------------------------------------
+# The page. Its tests drive it in a browser, so they live in this tier too.
+# ---------------------------------------------------------------------------
+echo
+echo "the page:"
+log="${LOGDIR}/page.log"
+start=$SECONDS
+uv run --quiet pytest tests -q -p no:cacheprovider > "$log" 2>&1
+rc=$?
+took=$((SECONDS - start))
+if [ "$rc" -eq 0 ]; then
+  ok "page: $(grep -E '[0-9]+ passed' "$log" | tail -1)  ${took}s"
+else
+  bad "page: pytest rc=${rc}  ${took}s  (log: ${log})"
+  grep -E '^(FAILED|ERROR)' "$log" | sed 's/^/        /'
+fi
+
 echo
 if [ "$fail" -ne 0 ]; then
   printf 'FAILED: %d passed, %d failed\n%s' "$pass" "$fail" "$failed_names" >&2

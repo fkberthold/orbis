@@ -60,7 +60,7 @@ else matters if that is false. So it gets tested first, with one item, by hand.
     items/playwright/01-seat-desk/
       TASK.md          the statement a learner reads
       app/             the real target, a static page with JS
-      mutations/       three patches, one broken rule each
+      mutations/       four patches, one broken rule each
       reference/       the reference solution
       candidates/      three solutions the gate has to reject
 
@@ -70,6 +70,10 @@ else matters if that is false. So it gets tested first, with one item, by hand.
       tracing.py       count the assertions a run actually executed
       runner.py        one candidate against one environment
       gate.py          the three conditions, a selfcheck, and a filter
+      page.py          the task and its worked answer, one line at a time
+      web/             the page's script and stylesheet
+
+    tests/             the page, driven in a browser
 
 ## Running it
 
@@ -89,6 +93,17 @@ uv run python -m orbis.gate selfcheck items/playwright/01-seat-desk
 # sort a generated set of patches by what the reference makes of each one
 uv run python -m orbis.gate filter items/playwright/01-seat-desk --mutations <dir>
 ```
+
+To work an item, start the page and open the address it prints:
+
+```bash
+uv run python -m orbis.page    # http://127.0.0.1:8765
+```
+
+It shows the task and the worked answer, with every line of the answer closed.
+A line opens when you ask for it, and the server writes that down in
+`run/reveals.jsonl` before it sends the line back. So the record is a side
+effect of reading, and there's nothing to fill in.
 
 `filter` reports rather than judging. It groups the caught patches by vector,
 and you keep one per group. It lists the silent ones separately, since a silent
