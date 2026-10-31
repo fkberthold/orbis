@@ -104,6 +104,16 @@ order** and name what each step shows: open the course, read the lesson, open
 the app, write a test, grade it, read the verdict, reveal the answer. A step
 with nothing to show is a gap, however good the code behind it is.
 
+**Use a good existing course before writing one.** Frank, 2026-10-31: "are
+the existing docs a good, progressive set of lessons, if so, then use them,
+otherwise write your own. This should be the general rule. If there is a good
+set of lessons out there, use it." So for each subject, first assess whether a
+human-written lesson sequence already exists that is progressive, current and
+free to read. If one does, it's the backbone, as learntla's chapters were for
+tla-puzzles, and Orbis writes what goes around each chapter: a guide to what
+the learner needs first, a cheat sheet, exercises and drills. Orbis writes its
+own lessons only for a subject, or a stretch of one, that nothing good covers.
+
 ## THE GATE DISCIPLINE, and it is not negotiable
 
 **Watch the gate fail before believing it.** Every item ships candidates whose
