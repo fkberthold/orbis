@@ -7,5 +7,6 @@ import { test, expect } from '@playwright/test';
 
 test('the lookup loads', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('#heading')).toHaveText('Northgate Parts Lookup');
+  // By level rather than name, since a name would match the text it checks.
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Northgate Parts Lookup');
 });
