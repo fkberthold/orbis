@@ -29,6 +29,23 @@ def test_taken_seat_is_rejected(page: Page) -> None:
     expect(page.locator("li.reservation")).to_have_count(0)
 
 
+def test_reserved_seat_is_refused_next_time(page: Page) -> None:
+    open_desk(page)
+    page.fill("#name", "Ada")
+    page.select_option("#seat", "A1")
+    page.click("#reserve")
+    expect(page.locator("#banner")).to_have_text("Reserved A1 for Ada.")
+
+    # A1 was free when the page loaded, so only the first reservation can be
+    # what makes it taken.
+    page.fill("#name", "Bo")
+    page.select_option("#seat", "A1")
+    page.click("#reserve")
+
+    expect(page.locator("#error")).to_have_text("Seat A1 is already taken.")
+    expect(page.locator("li.reservation")).to_have_count(1)
+
+
 def test_double_click_reserves_once(page: Page) -> None:
     open_desk(page)
     page.fill("#name", "Ada")

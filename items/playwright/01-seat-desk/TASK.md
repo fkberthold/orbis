@@ -11,7 +11,8 @@ Write Playwright tests that hold the desk to the rules below.
 1. A reservation on a free seat shows a banner naming the seat and the person,
    adds one row to the reservations list, and clears the "Reserving..." notice.
 2. A reservation on a taken seat is refused with an error naming the seat, and
-   adds no row.
+   adds no row. A seat counts as taken once anyone has reserved it, including
+   earlier in the same visit.
 3. Clicking Reserve twice in quick succession reserves once and reports no
    error.
 
@@ -23,7 +24,7 @@ Write Playwright tests that hold the desk to the rules below.
 
 ## How this is graded
 
-Your tests run against the real desk and against three broken copies of it.
+Your tests run against the real desk and against four broken copies of it.
 Passing the real desk is not the bar, because a test that asserts nothing passes
 the real desk. Each broken copy breaks exactly one rule, and your tests have to
 notice.

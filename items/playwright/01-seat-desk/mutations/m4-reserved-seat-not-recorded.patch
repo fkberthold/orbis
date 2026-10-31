@@ -1,0 +1,13 @@
+diff --git a/app.js b/app.js
+index 206bf4b..5d8043e 100644
+--- a/app.js
++++ b/app.js
+@@ -56,8 +56,6 @@ async function reserve(event) {
+     return;
+   }
+ 
+-  TAKEN.add(seat);
+-
+   const row = document.createElement("li");
+   row.className = "reservation";
+   row.textContent = seat + " - " + name;

@@ -97,18 +97,23 @@ patch is either outside the rules or a hole in the reference.
 ## Measured, 2026-10-30
 
 Playwright 1.59.0 against the nixpkgs driver at 1.59.1, chromium revision 1217,
-reporting chromium 147.0.7727.15. The reference passes the real desk with 11
+reporting chromium 147.0.7727.15. The reference passes the real desk with 15
 assertions executed, and each mutation produces a different failure vector.
 
 | environment | cell | vector |
 |---|---|---|
-| real | silent | pass pass pass |
-| m1-no-inflight-lock | catches | FAIL pass pass |
-| m2-no-taken-check | catches | pass pass FAIL |
-| m3-spinner-never-clears | catches | pass FAIL pass |
+| real | silent | pass pass pass pass |
+| m1-no-inflight-lock | catches | FAIL pass pass pass |
+| m2-no-taken-check | catches | pass pass FAIL FAIL |
+| m3-spinner-never-clears | catches | pass FAIL pass pass |
+| m4-reserved-seat-not-recorded | catches | pass pass FAIL pass |
 
 Vector order is `test_double_click_reserves_once`, `test_reserve_succeeds`,
-`test_taken_seat_is_rejected`.
+`test_reserved_seat_is_refused_next_time`, `test_taken_seat_is_rejected`.
+
+The fourth test and `m4` came from a generated mutation the original three
+tests were silent on (orb-eei.1). Rule 2 already covered it, so it was a hole in
+the reference rather than a break outside the rules.
 
 All three rejected candidates behave as they should. The one that asserts
 nothing reads `vacuous` against every copy. The one that only checks the page
