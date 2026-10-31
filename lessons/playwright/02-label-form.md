@@ -27,9 +27,9 @@ So a negative claim needs something to stand on. Wait first for a sign that the
 page has finished, and only then check what's missing.
 
 ```ts
-await page.click('#save');
-await expect(page.locator('#status')).toHaveText('Saved'); // the page has answered
-await expect(page.locator('#error')).toBeHidden();         // so absence means something
+await page.getByRole('button', { name: 'Save' }).click();
+await expect(page.getByRole('status')).toHaveText('Saved'); // the page has answered
+await expect(page.getByRole('alert')).toBeHidden();         // so absence means something
 ```
 
 The first assertion gives the second its meaning, and its `await` is doing the

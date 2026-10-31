@@ -9,9 +9,9 @@ import { test, expect } from '@playwright/test';
 
 test('a tool can be checked out', async ({ page }) => {
   await page.goto('/');
-  await page.fill('#borrower', 'Sam');
-  await page.click('#checkout');
-  await expect(page.locator('#loans li')).toHaveCount(1);
+  await page.getByLabel('Borrower').fill('Sam');
+  await page.getByRole('button', { name: 'Check out' }).click();
+  await expect(page.getByRole('listitem')).toHaveCount(1);
 });
 ```
 
@@ -23,7 +23,9 @@ test('a tool can be checked out', async ({ page }) => {
 | `test('a tool can be checked out', ...)` | Declare a test. The first argument is its title, the second is the test itself. |
 | `async ({ page }) => { ... }` | The test is a function. `=>` is how TypeScript writes a short function. `async` says it waits on things, and more on that below. |
 | `({ page })` | Playwright hands the function a bundle of ready-made helpers. The braces pull out the one called `page`, a fresh browser tab. |
-| `'#borrower'` | A string. Single and double quotes mean the same thing. |
+| `page.getByLabel('Borrower').fill('Sam')` | Find the field labeled Borrower, then fill it. Each dot does the next thing to whatever the last step gave back. |
+| `{ name: 'Check out' }` | An object, a bundle of named values in braces. Here it says which button you mean. |
+| `'Borrower'` | A string. Single and double quotes mean the same thing. |
 | `;` | Ends a statement. TypeScript usually works without them, and the course uses them anyway. |
 
 Two more you'll see. `const total = 3;` names a value that won't change, and
@@ -43,7 +45,7 @@ like `page.clik` will, but only when that line runs.
 ## The one idea: `await`
 
 The browser runs in a separate process. When your test says
-`page.click('#checkout')`, it sends the click off and gets back a promise, a
+`page.getByRole('button', { name: 'Check out' }).click()`, it sends the click off and gets back a promise, a
 ticket for a result that isn't ready yet. `await` means "stop here until the
 ticket comes back." Without it, the test moves straight on to the next line
 while the click is still on its way.

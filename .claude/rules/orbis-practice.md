@@ -46,7 +46,10 @@ leave the reader a choice I am resolving silently?** The classes that recur:
 **3. Write the reference solution.** Idiomatic for the subject. For Playwright
 that is `@playwright/test` in TypeScript, a `.spec.ts` with `test(...)` and
 the `page` fixture, so `await page.goto('/')` reaches the app. Every action and
-every web-first `expect` is awaited. **Do not invent an interface.** The whole
+every web-first `expect` is awaited. Actions go through a locator, never
+`page.click(selector)`, which the docs mark discouraged. Pick the locator from
+the top of the docs' list (`getByRole`, then `getByLabel`, then text) and drop
+to an id only for an element with no role or name. **Do not invent an interface.** The whole
 reason Playwright is the easy corner is that the environment supplies the
 interface, and shimming it spends that advantage to measure it.
 
