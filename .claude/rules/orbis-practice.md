@@ -69,8 +69,10 @@ item is not done without them:
 - one that drops the `await` from its assertions, which the gate must reject
   however it gets there, and say which condition did it. When the dropped
   awaits sit at the end of a test, Playwright fails them as still pending and
-  G1 rejects it (items 01 and 02). When awaited steps follow them, they finish
-  in the background and only G2 catches it (item 04).
+  G1 rejects it (items 01 and 02). When awaited steps follow them (item 04),
+  or the page has already done what they check (item 05), they pass, and only
+  G2 catches it. So this candidate always gets rejected, but it only exercises
+  the missing await where the app takes a moment to answer.
 
 The second is the one that matters. A pass-or-fail instrument calls it correct.
 
