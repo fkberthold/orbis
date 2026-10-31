@@ -85,3 +85,16 @@ def test_the_index_lists_the_item(page: Page, server) -> None:
     page.goto(server.base_url + "/")
     page.click(f"a[href='/item/{ITEM}']")
     expect(page.locator("#task h1")).to_contain_text("Seat desk")
+
+
+def test_a_lesson_comes_before_its_task(page: Page, server) -> None:
+    page.goto(server.base_url + "/item/playwright/02-label-form")
+    expect(page.locator("#lesson h1")).to_be_visible()
+    lesson_top = page.locator("#lesson").bounding_box()["y"]
+    task_top = page.locator("#task").bounding_box()["y"]
+    assert lesson_top < task_top
+
+
+def test_an_item_without_a_lesson_has_no_lesson_section(page: Page, server) -> None:
+    page.goto(server.base_url + "/item/" + ITEM)
+    expect(page.locator("#lesson")).to_have_count(0)

@@ -162,6 +162,18 @@ def render_attempt(name, last):
     )
 
 
+def lesson_of(name, item):
+    """The lesson that comes before an item, kept beside items/ in lessons/."""
+    return item.parents[2] / "lessons" / f"{name}.md"
+
+
+def render_lesson(name, item):
+    path = lesson_of(name, item)
+    if not path.is_file():
+        return ""
+    return f"<section id=\"lesson\">\n{_MARKDOWN.render(path.read_text())}</section>\n"
+
+
 def render_item(name, item, revealed, last=None):
     task = _MARKDOWN.render((item / "TASK.md").read_text())
     rows = []
@@ -181,6 +193,7 @@ def render_item(name, item, revealed, last=None):
     body = (
         f"<main data-item=\"{html.escape(name)}\">\n"
         "<p class=\"crumbs\"><a href=\"/\">all items</a></p>\n"
+        f"{render_lesson(name, item)}"
         f"<section id=\"task\">\n{task}</section>\n"
         f"{render_attempt(name, last)}\n"
         "<section id=\"answer\">\n<h2>The worked answer</h2>\n"
