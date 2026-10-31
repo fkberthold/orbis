@@ -12,6 +12,7 @@ import dataclasses
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -91,6 +92,14 @@ def _parse_junit(report):
         )
     outcomes.sort(key=lambda outcome: outcome.name)
     return outcomes
+
+
+def _first_error(output):
+    """The first line of a test run's output that says Error, without colors."""
+    for line in re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", output).splitlines():
+        if "Error" in line:
+            return line.strip()[:200]
+    return ""
 
 
 def _classify(returncode, outcomes, expects, asserted_in_source):
@@ -186,6 +195,12 @@ def run(candidate, app_dir, patch, environment_name, browsers_path,
         expects = tracing.expect_calls_under(output)
         asserted = tracing.has_assert_statement(candidate)
         cell, note = _classify(returncode, outcomes, expects, asserted)
+        if cell == verdict.DID_NOT_RUN and not outcomes:
+            # Name the cause. A file that won't load is the commonest way to
+            # get here, and the bare exit code says nothing about which line.
+            cause = _first_error(finished.stdout + finished.stderr)
+            if cause:
+                note = f"{note}: {cause}"
         return Run(environment_name, cell, outcomes or [], expects, note)
     finally:
         if keep_dir is None:
