@@ -13,7 +13,7 @@ import pathlib
 import subprocess
 import sys
 
-from . import runner, verdict
+from . import progress, runner, verdict
 
 GATE_PASS = "OK"
 GATE_FAIL = "FAIL"
@@ -142,6 +142,27 @@ def command_gate(args):
     return 0 if accepted else 1
 
 
+def command_attempt(args):
+    """Grade the learner's own file and write the verdict down.
+
+    G3 is left out because it's a check on the item's mutations, and a
+    learner's file passing or failing them says nothing about whether two of
+    them teach the same thing.
+    """
+    if not args.candidate:
+        raise SystemExit("attempt needs --candidate, the file to grade")
+    item = Item(args.item)
+    item.check()
+    candidate = pathlib.Path(args.candidate).resolve()
+    accepted, runs = run_gate(item, candidate, browsers_path(), False)
+
+    name = f"{item.root.parent.name}/{item.root.name}"
+    cells = [{"environment": run.environment, "cell": run.cell} for run in runs]
+    progress.AttemptLog(args.attempts).record(name, candidate, accepted, cells)
+    print(f"ATTEMPT {'accepted' if accepted else 'rejected'}, written to {args.attempts}")
+    return 0 if accepted else 1
+
+
 def command_selfcheck(args):
     """Watch the gate fail before believing it.
 
@@ -243,9 +264,10 @@ def command_filter(args):
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="orbis.gate")
     parser.add_argument(
-        "command", choices=["gate", "selfcheck", "filter"],
+        "command", choices=["gate", "selfcheck", "filter", "attempt"],
         help="gate grades one candidate, selfcheck proves the gate can fail, "
-             "filter sorts a generated mutation set",
+             "filter sorts a generated mutation set, attempt grades your own "
+             "file and records the verdict",
     )
     parser.add_argument("item", help="path to an item directory")
     parser.add_argument(
@@ -255,11 +277,17 @@ def main(argv=None):
         "--mutations",
         help="filter only: read the patches from this directory instead",
     )
+    parser.add_argument(
+        "--attempts", default=str(pathlib.Path("run") / "attempts.jsonl"),
+        help="attempt only: where the verdict is written",
+    )
     args = parser.parse_args(argv)
     if args.command == "gate":
         return command_gate(args)
     if args.command == "filter":
         return command_filter(args)
+    if args.command == "attempt":
+        return command_attempt(args)
     return command_selfcheck(args)
 
 

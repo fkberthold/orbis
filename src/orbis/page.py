@@ -12,7 +12,6 @@ minutes per item, and that kind gets skipped.
 """
 
 import argparse
-import datetime
 import html
 import http.server
 import json
@@ -21,6 +20,8 @@ import re
 import threading
 
 from markdown_it import MarkdownIt
+
+from . import progress
 
 WEB = pathlib.Path(__file__).resolve().parent / "web"
 DEFAULT_LOG = pathlib.Path("run") / "reveals.jsonl"
@@ -93,35 +94,6 @@ def worked_lines(reference):
     return lines
 
 
-class RevealLog:
-    """An append-only file of reveals. Each line is one JSON record."""
-
-    def __init__(self, path):
-        self.path = pathlib.Path(path)
-        self._lock = threading.Lock()
-
-    def revealed(self, item):
-        if not self.path.exists():
-            return set()
-        lines = set()
-        for raw in self.path.read_text().splitlines():
-            record = json.loads(raw)
-            if record["item"] == item:
-                lines.add(record["line"])
-        return lines
-
-    def record(self, item, line):
-        entry = {
-            "item": item,
-            "line": line,
-            "at": datetime.datetime.now(datetime.UTC).isoformat(),
-        }
-        with self._lock:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            with self.path.open("a") as out:
-                out.write(json.dumps(entry) + "\n")
-
-
 def _shell(title, body):
     return (
         "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
@@ -142,16 +114,55 @@ def task_title(item):
     return item.name
 
 
-def render_index(items):
-    rows = "\n".join(
-        f"  <li><a href=\"/item/{html.escape(name)}\">{html.escape(name)}</a>"
-        f" <span class=\"title\">{html.escape(task_title(item))}</span></li>"
-        for name, item in items.items()
+def _verdict_word(attempt):
+    return "accepted" if attempt["accepted"] else "rejected"
+
+
+def render_index(items, attempts):
+    rows = []
+    for name, item in items.items():
+        last = attempts.last(name)
+        status = (
+            f" <span class=\"status {_verdict_word(last)}\">{_verdict_word(last)}</span>"
+            if last else ""
+        )
+        rows.append(
+            f"  <li><a href=\"/item/{html.escape(name)}\">{html.escape(name)}</a>"
+            f" <span class=\"title\">{html.escape(task_title(item))}</span>{status}</li>"
+        )
+    listing = "\n".join(rows)
+    return _shell("Orbis", f"<main>\n<h1>Orbis</h1>\n<ul id=\"items\">\n{listing}\n</ul>\n</main>")
+
+
+def render_attempt(name, last):
+    """The gate's verdict on the learner's latest file, cell by cell."""
+    command = (
+        f"uv run python -m orbis.gate attempt items/{html.escape(name)}"
+        " --candidate &lt;your test file&gt;"
     )
-    return _shell("Orbis", f"<main>\n<h1>Orbis</h1>\n<ul id=\"items\">\n{rows}\n</ul>\n</main>")
+    if last is None:
+        return (
+            "<section id=\"attempt\">\n<h2>Your attempt</h2>\n"
+            "<p>No attempt graded yet. Grade one with</p>\n"
+            f"<pre><code>{command}</code></pre>\n</section>"
+        )
+    rows = "\n".join(
+        f"<tr><td>{html.escape(c['environment'])}</td><td>{html.escape(c['cell'])}</td></tr>"
+        for c in last["cells"]
+    )
+    word = _verdict_word(last)
+    return (
+        "<section id=\"attempt\">\n<h2>Your attempt</h2>\n"
+        f"<p>The gate <span class=\"verdict {word}\">{word}</span>"
+        f" <code>{html.escape(last['candidate'])}</code> at {html.escape(last['at'])}.</p>\n"
+        "<table>\n<tr><th>environment</th><th>cell</th></tr>\n"
+        f"{rows}\n</table>\n"
+        f"<p class=\"hint\">Grade another with</p>\n<pre><code>{command}</code></pre>\n"
+        "</section>"
+    )
 
 
-def render_item(name, item, revealed):
+def render_item(name, item, revealed, last=None):
     task = _MARKDOWN.render((item / "TASK.md").read_text())
     rows = []
     for number, text, margin in worked_lines(reference_of(item)):
@@ -171,6 +182,7 @@ def render_item(name, item, revealed):
         f"<main data-item=\"{html.escape(name)}\">\n"
         "<p class=\"crumbs\"><a href=\"/\">all items</a></p>\n"
         f"<section id=\"task\">\n{task}</section>\n"
+        f"{render_attempt(name, last)}\n"
         "<section id=\"answer\">\n<h2>The worked answer</h2>\n"
         "<p class=\"hint\">Write your own attempt first. Each line opens on its own,"
         " and the margin says what kind of line it is.</p>\n"
@@ -179,7 +191,7 @@ def render_item(name, item, revealed):
     return _shell(task_title(item), body)
 
 
-def _handler(items, log):
+def _handler(items, log, attempts):
     class Handler(http.server.BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
             pass
@@ -196,11 +208,14 @@ def _handler(items, log):
         def do_GET(self):
             path = self.path.split("?", 1)[0]
             if path == "/":
-                return self._send(200, "text/html; charset=utf-8", render_index(items))
+                page = render_index(items, attempts)
+                return self._send(200, "text/html; charset=utf-8", page)
             if path.startswith("/item/"):
                 name = path[len("/item/"):]
                 if name in items:
-                    page = render_item(name, items[name], log.revealed(name))
+                    page = render_item(
+                        name, items[name], log.revealed(name), attempts.last(name)
+                    )
                     return self._send(200, "text/html; charset=utf-8", page)
             if path in ("/static/page.css", "/static/page.js"):
                 kind = "text/css" if path.endswith(".css") else "text/javascript"
@@ -231,12 +246,19 @@ def _handler(items, log):
 
 
 class Server:
-    """Serve the pages on a loopback port and record reveals to a log file."""
+    """Serve the pages on a loopback port and record reveals to a log file.
 
-    def __init__(self, items_root, log_path, port=0):
+    The attempts log sits beside the reveals log unless told otherwise, which
+    is where `gate attempt` writes by default.
+    """
+
+    def __init__(self, items_root, log_path, port=0, attempts_path=None):
         self.items = find_items(items_root)
         self.log = pathlib.Path(log_path)
-        handler = _handler(self.items, RevealLog(self.log))
+        attempts = pathlib.Path(attempts_path or self.log.parent / "attempts.jsonl")
+        handler = _handler(
+            self.items, progress.RevealLog(self.log), progress.AttemptLog(attempts)
+        )
         self._server = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
         self.port = self._server.server_address[1]
         self.base_url = f"http://127.0.0.1:{self.port}"

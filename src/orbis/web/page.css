@@ -117,3 +117,21 @@ pre {
     text-align: left;
   }
 }
+
+.verdict,
+.status {
+  font-weight: bold;
+}
+
+.accepted {
+  color: #2e7d4f;
+}
+
+.rejected {
+  color: #b0412e;
+}
+
+#attempt {
+  margin-top: 2rem;
+  border-top: 1px solid var(--rule);
+}

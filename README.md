@@ -71,6 +71,7 @@ else matters if that is false. So it gets tested first, with one item, by hand.
       runner.py        one candidate against one environment
       gate.py          the three conditions, a selfcheck, and a filter
       page.py          the task and its worked answer, one line at a time
+      progress.py      the reveals and attempts logs
       web/             the page's script and stylesheet
 
     tests/             the page, driven in a browser
@@ -104,6 +105,17 @@ It shows the task and the worked answer, with every line of the answer closed.
 A line opens when you ask for it, and the server writes that down in
 `run/reveals.jsonl` before it sends the line back. So the record is a side
 effect of reading, and there's nothing to fill in.
+
+To grade your own tests, point the gate at your file:
+
+```bash
+uv run python -m orbis.gate attempt items/playwright/01-seat-desk --candidate my_test.py
+```
+
+It runs your file against the real app and every broken copy, and appends
+the verdict to `run/attempts.jsonl`. The item page shows the latest one, cell
+by cell. That verdict is the only thing stored as a fact. Nothing turns it into
+a score.
 
 `filter` reports rather than judging. It groups the caught patches by vector,
 and you keep one per group. It lists the silent ones separately, since a silent
