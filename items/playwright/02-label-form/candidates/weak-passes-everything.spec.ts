@@ -8,6 +8,6 @@ import { test, expect } from '@playwright/test';
 
 test('a blank label prints nothing', async ({ page }) => {
   await page.goto('/');
-  await page.click('#print');
-  await expect(page.locator('li.label')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Print label' }).click();
+  await expect(page.getByRole('listitem')).toHaveCount(0);
 });

@@ -6,5 +6,5 @@ import { openDesk } from './helpers-that-do-not-exist';
 
 test('the desk loads', async ({ page }) => {
   await openDesk(page);
-  await expect(page.locator('#heading')).toHaveText('Northgate Label Desk');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Northgate Label Desk');
 });
