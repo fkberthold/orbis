@@ -10,6 +10,7 @@ vectors is what catches that.
 import argparse
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 
@@ -68,14 +69,23 @@ def browsers_path():
     return built.stdout.strip().splitlines()[-1]
 
 
-def grade(item, candidate, browsers):
-    """Run one candidate across every environment and return the runs."""
+def grade(item, candidate, browsers, keep=None):
+    """Run one candidate across every environment and return the runs.
+
+    With keep, each environment's run directory stays under keep/<name>, which
+    is where its traces end up.
+    """
+    def kept(name):
+        return keep / name if keep else None
+
     runs = [
-        runner.run(candidate, item.app, None, runner.REAL, browsers)
+        runner.run(candidate, item.app, None, runner.REAL, browsers,
+                   keep_dir=kept(runner.REAL))
     ]
     for patch in item.mutations:
         runs.append(
-            runner.run(candidate, item.app, patch, patch.stem, browsers)
+            runner.run(candidate, item.app, patch, patch.stem, browsers,
+                       keep_dir=kept(patch.stem))
         )
     return runs
 
@@ -118,8 +128,8 @@ def conditions(runs, check_vectors):
     return results
 
 
-def run_gate(item, candidate, browsers, check_vectors):
-    runs = grade(item, candidate, browsers)
+def run_gate(item, candidate, browsers, check_vectors, keep=None):
+    runs = grade(item, candidate, browsers, keep)
     report(item, candidate, runs)
     results = conditions(runs, check_vectors)
     for label, ok in results:
@@ -154,10 +164,23 @@ def command_attempt(args):
     item = Item(args.item)
     item.check()
     candidate = pathlib.Path(args.candidate).resolve()
-    accepted, runs = run_gate(item, candidate, browsers_path(), False)
-
     name = f"{item.root.parent.name}/{item.root.name}"
-    cells = [{"environment": run.environment, "cell": run.cell} for run in runs]
+
+    # The traces are what explain a verdict, so they're kept, one directory
+    # per environment. Only the latest attempt's are kept, which is the one
+    # the page shows.
+    traces = pathlib.Path(args.attempts).parent / "traces" / name
+    shutil.rmtree(traces, ignore_errors=True)
+    accepted, runs = run_gate(item, candidate, browsers_path(), False, traces)
+
+    cells = [
+        {
+            "environment": run.environment,
+            "cell": run.cell,
+            "traces": [str(t) for t in sorted((traces / run.environment).rglob("trace.zip"))],
+        }
+        for run in runs
+    ]
     progress.AttemptLog(args.attempts).record(name, candidate, accepted, cells)
     print(f"ATTEMPT {'accepted' if accepted else 'rejected'}, written to {args.attempts}")
     return 0 if accepted else 1

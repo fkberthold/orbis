@@ -95,16 +95,25 @@ uv run python -m orbis.gate selfcheck items/playwright/01-seat-desk
 uv run python -m orbis.gate filter items/playwright/01-seat-desk --mutations <dir>
 ```
 
-To work an item, start the page and open the address it prints:
+To work through the course, start the page and open the address it prints:
 
 ```bash
-uv run python -m orbis.page    # http://127.0.0.1:8765
+uv run python -m orbis.page    # the course at http://127.0.0.1:8765
 ```
 
-It shows the task and the worked answer, with every line of the answer closed.
-A line opens when you ask for it, and the server writes that down in
-`run/reveals.jsonl` before it sends the line back. So the record is a side
-effect of reading, and there's nothing to fill in.
+The front page is the course, a lesson per step in order, each followed by an
+item to practice it on. Items that don't have a lesson yet are listed apart.
+
+A step's page is the lesson, then the task, then the real app. Each item's app
+runs on a port of its own (8766 and up), because the tests call
+`page.goto("/")` and that needs the app at the root. The page lists the
+codegen, headed and inspector commands for that address. Only the real app is
+served. The broken copies never get a URL.
+
+Below that is the worked answer, with every line closed. A line opens when you
+ask for it, and the server writes that down in `run/reveals.jsonl` before it
+sends the line back. So the record is a side effect of reading, and there's
+nothing to fill in.
 
 To grade your own tests, point the gate at your file:
 
@@ -113,9 +122,10 @@ uv run python -m orbis.gate attempt items/playwright/01-seat-desk --candidate my
 ```
 
 It runs your file against the real app and every broken copy, and appends
-the verdict to `run/attempts.jsonl`. The item page shows the latest one, cell
-by cell. That verdict is the only thing stored as a fact. Nothing turns it into
-a score.
+the verdict to `run/attempts.jsonl`. The item page shows the latest verdict,
+cell by cell. The traces from that run stay under `run/traces/`, and the page
+lists a `show-trace` command beside each cell. The verdict is the only thing
+stored as a fact. Nothing turns it into a score.
 
 `filter` reports rather than judging. It groups the caught patches by vector,
 and you keep one per group. It lists the silent ones separately, since a silent

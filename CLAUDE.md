@@ -76,6 +76,34 @@ resolution was to stop pairing the modules at all.
 target and a poor stress test for generality. Know which one you are looking at
 while building.
 
+## THE LEARNER'S PATH IS THE SPEC, and it starts with a lesson
+
+Frank, 2026-10-31: "If I'm learning how to use playwright, I'm going to do the
+lesson, then do the item as practice."
+
+The first build got that backwards. It went item-first because the verdict was
+the hard part, so the item became the unit and lessons hung off it. Two lessons
+landed on items 02 and 03, none on 01, and the app under test couldn't be
+opened at all. Every piece looked fine from the builder's side. Nobody walked
+it from the learner's side.
+
+**The lesson is the unit of progression, and the item is its practice.** The
+index is the course, in learning order. An item without a lesson isn't on the
+path yet, and the index says so rather than mixing it in.
+
+**The first step gets the first lesson.** Fill gaps from the front of the
+course, never from wherever the material is most interesting to write.
+
+**The learner works against the live app.** A front-end test is written by
+poking at the real page, especially where timing is involved. So each item's
+real app is one click away while the learner writes. The broken copies stay
+off any URL until the learner has been graded.
+
+**Before building or changing anything a learner touches, walk the path in
+order** and name what each step shows: open the course, read the lesson, open
+the app, write a test, grade it, read the verdict, reveal the answer. A step
+with nothing to show is a gap, however good the code behind it is.
+
 ## THE GATE DISCIPLINE, and it is not negotiable
 
 **Watch the gate fail before believing it.** Every item ships candidates whose

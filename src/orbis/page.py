@@ -22,6 +22,7 @@ import threading
 from markdown_it import MarkdownIt
 
 from . import progress
+from .environment import Site
 
 WEB = pathlib.Path(__file__).resolve().parent / "web"
 DEFAULT_LOG = pathlib.Path("run") / "reveals.jsonl"
@@ -118,20 +119,70 @@ def _verdict_word(attempt):
     return "accepted" if attempt["accepted"] else "rejected"
 
 
+def _first_heading(path, fallback):
+    for line in path.read_text().splitlines():
+        if line.startswith("# "):
+            return line[2:].strip()
+    return fallback
+
+
 def render_index(items, attempts):
-    rows = []
+    """The course: each lesson in order, with its practice item behind it.
+
+    An item with no lesson yet is listed apart. It can still be worked, but it
+    isn't a step on the path, and mixing it in would hide that.
+    """
+    steps, waiting = [], []
     for name, item in items.items():
         last = attempts.last(name)
         status = (
             f" <span class=\"status {_verdict_word(last)}\">{_verdict_word(last)}</span>"
             if last else ""
         )
-        rows.append(
-            f"  <li><a href=\"/item/{html.escape(name)}\">{html.escape(name)}</a>"
-            f" <span class=\"title\">{html.escape(task_title(item))}</span>{status}</li>"
+        link = f"<a href=\"/item/{html.escape(name)}\">"
+        lesson = lesson_of(name, item)
+        if lesson.is_file():
+            steps.append(
+                f"  <li>{link}{html.escape(_first_heading(lesson, name))}</a>"
+                f" <span class=\"title\">then practice: {html.escape(task_title(item))}"
+                f"</span>{status}</li>"
+            )
+        else:
+            waiting.append(
+                f"  <li>{link}{html.escape(task_title(item))}</a>"
+                f" <span class=\"title\">{html.escape(name)}</span>{status}</li>"
+            )
+    body = "<main>\n<h1>Orbis: Playwright</h1>\n"
+    body += "<p class=\"hint\">Each step is a lesson, then an item to practice it on.</p>\n"
+    body += "<ol id=\"course\">\n" + "\n".join(steps) + "\n</ol>\n"
+    if waiting:
+        body += (
+            "<section id=\"waiting\">\n<h2>Practice items waiting for a lesson</h2>\n"
+            "<p class=\"hint\">These work, but they aren't on the path yet.</p>\n"
+            "<ul>\n" + "\n".join(waiting) + "\n</ul>\n</section>\n"
         )
-    listing = "\n".join(rows)
-    return _shell("Orbis", f"<main>\n<h1>Orbis</h1>\n<ul id=\"items\">\n{listing}\n</ul>\n</main>")
+    return _shell("Orbis", body + "</main>")
+
+
+def render_app(url):
+    """Where the learner drives the real app while writing tests.
+
+    The tests are written against the live page, so it's one click away. Only
+    the real app is served here. The broken copies never get a URL, since
+    exploring them first would mean testing the breaks instead of the rules.
+    """
+    url = html.escape(url)
+    return (
+        "<section id=\"app\">\n<h2>The app</h2>\n"
+        f"<p>The real app is running at <a href=\"{url}\" target=\"_blank\">{url}</a>."
+        " Poke at it, watch what changes and when, and write your tests against it.</p>\n"
+        "<p class=\"hint\">In a shell, after <code>source env.sh</code>:</p>\n"
+        "<table>\n"
+        f"<tr><td>record clicks and pick up selectors</td><td><code>uv run playwright codegen --target python-pytest {url}</code></td></tr>\n"
+        f"<tr><td>watch your tests run, slowed down</td><td><code>uv run pytest my_test.py --base-url {url} --headed --slowmo 500</code></td></tr>\n"
+        f"<tr><td>step through with the inspector</td><td><code>PWDEBUG=1 uv run pytest my_test.py --base-url {url}</code></td></tr>\n"
+        "</table>\n</section>"
+    )
 
 
 def render_attempt(name, last):
@@ -147,7 +198,11 @@ def render_attempt(name, last):
             f"<pre><code>{command}</code></pre>\n</section>"
         )
     rows = "\n".join(
-        f"<tr><td>{html.escape(c['environment'])}</td><td>{html.escape(c['cell'])}</td></tr>"
+        f"<tr><td>{html.escape(c['environment'])}</td><td>{html.escape(c['cell'])}</td>"
+        + "<td>" + "<br>".join(
+            f"<code>uv run playwright show-trace {html.escape(t)}</code>"
+            for t in c.get("traces", [])
+        ) + "</td></tr>"
         for c in last["cells"]
     )
     word = _verdict_word(last)
@@ -155,7 +210,7 @@ def render_attempt(name, last):
         "<section id=\"attempt\">\n<h2>Your attempt</h2>\n"
         f"<p>The gate <span class=\"verdict {word}\">{word}</span>"
         f" <code>{html.escape(last['candidate'])}</code> at {html.escape(last['at'])}.</p>\n"
-        "<table>\n<tr><th>environment</th><th>cell</th></tr>\n"
+        "<table>\n<tr><th>environment</th><th>cell</th><th>what your tests saw</th></tr>\n"
         f"{rows}\n</table>\n"
         f"<p class=\"hint\">Grade another with</p>\n<pre><code>{command}</code></pre>\n"
         "</section>"
@@ -174,8 +229,18 @@ def render_lesson(name, item):
     return f"<section id=\"lesson\">\n{_MARKDOWN.render(path.read_text())}</section>\n"
 
 
-def render_item(name, item, revealed, last=None):
+def _demote(rendered):
+    """Push every heading down a level, so the lesson keeps the page's h1."""
+    for level in (5, 4, 3, 2, 1):
+        rendered = rendered.replace(f"<h{level}>", f"<h{level + 1}>")
+        rendered = rendered.replace(f"</h{level}>", f"</h{level + 1}>")
+    return rendered
+
+
+def render_item(name, item, revealed, last=None, app_url=None):
     task = _MARKDOWN.render((item / "TASK.md").read_text())
+    if lesson_of(name, item).is_file():
+        task = "<p class=\"step\">Practice</p>\n" + _demote(task)
     rows = []
     for number, text, margin in worked_lines(reference_of(item)):
         if not text.strip():
@@ -192,9 +257,10 @@ def render_item(name, item, revealed, last=None):
             )
     body = (
         f"<main data-item=\"{html.escape(name)}\">\n"
-        "<p class=\"crumbs\"><a href=\"/\">all items</a></p>\n"
+        "<p class=\"crumbs\"><a href=\"/\">the course</a></p>\n"
         f"{render_lesson(name, item)}"
         f"<section id=\"task\">\n{task}</section>\n"
+        f"{render_app(app_url) if app_url else ''}\n"
         f"{render_attempt(name, last)}\n"
         "<section id=\"answer\">\n<h2>The worked answer</h2>\n"
         "<p class=\"hint\">Write your own attempt first. Each line opens on its own,"
@@ -204,7 +270,7 @@ def render_item(name, item, revealed, last=None):
     return _shell(task_title(item), body)
 
 
-def _handler(items, log, attempts):
+def _handler(items, log, attempts, apps):
     class Handler(http.server.BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
             pass
@@ -227,7 +293,8 @@ def _handler(items, log, attempts):
                 name = path[len("/item/"):]
                 if name in items:
                     page = render_item(
-                        name, items[name], log.revealed(name), attempts.last(name)
+                        name, items[name], log.revealed(name), attempts.last(name),
+                        apps[name].base_url,
                     )
                     return self._send(200, "text/html; charset=utf-8", page)
             if path in ("/static/page.css", "/static/page.js"):
@@ -263,14 +330,25 @@ class Server:
 
     The attempts log sits beside the reveals log unless told otherwise, which
     is where `gate attempt` writes by default.
+
+    Each item's real app gets a port of its own, because the tests call
+    page.goto("/") and that resolves to the root of the base URL. Served under
+    a path, every one of them would land on the wrong page. With a fixed page
+    port the apps take the ports right after it, so the addresses stay the same
+    from one sitting to the next.
     """
 
     def __init__(self, items_root, log_path, port=0, attempts_path=None):
         self.items = find_items(items_root)
         self.log = pathlib.Path(log_path)
         attempts = pathlib.Path(attempts_path or self.log.parent / "attempts.jsonl")
+        self.apps = {
+            name: Site(item / "app", port + 1 + index if port else 0)
+            for index, (name, item) in enumerate(self.items.items())
+        }
         handler = _handler(
-            self.items, progress.RevealLog(self.log), progress.AttemptLog(attempts)
+            self.items, progress.RevealLog(self.log), progress.AttemptLog(attempts),
+            self.apps,
         )
         self._server = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
         self.port = self._server.server_address[1]
@@ -278,6 +356,8 @@ class Server:
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
 
     def __enter__(self):
+        for app in self.apps.values():
+            app.__enter__()
         self._thread.start()
         return self
 
@@ -285,6 +365,8 @@ class Server:
         self._server.shutdown()
         self._server.server_close()
         self._thread.join(timeout=5)
+        for app in self.apps.values():
+            app.__exit__(None, None, None)
         return False
 
 
@@ -296,6 +378,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     with Server(args.items, args.log, args.port) as running:
         print(f"Orbis at {running.base_url}  (reveals go to {args.log})")
+        for name, app in running.apps.items():
+            print(f"  {name:<32} {app.base_url}")
         try:
             threading.Event().wait()
         except KeyboardInterrupt:

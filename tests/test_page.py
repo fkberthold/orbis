@@ -44,7 +44,7 @@ def first_lines(count):
 
 def test_two_reveals_are_recorded_without_asking(page: Page, server) -> None:
     page.goto(server.base_url + "/item/" + ITEM)
-    expect(page.locator("#task h1")).to_contain_text("Seat desk")
+    expect(page.locator("#task")).to_contain_text("Seat desk")
 
     (one, one_text), (two, two_text) = first_lines(2)
     page.click(f"#line-{one} button")
@@ -84,7 +84,7 @@ def test_margin_names_the_test_without_giving_the_answer(page: Page, server) -> 
 def test_the_index_lists_the_item(page: Page, server) -> None:
     page.goto(server.base_url + "/")
     page.click(f"a[href='/item/{ITEM}']")
-    expect(page.locator("#task h1")).to_contain_text("Seat desk")
+    expect(page.locator("#task")).to_contain_text("Seat desk")
 
 
 def test_a_lesson_comes_before_its_task(page: Page, server) -> None:
@@ -96,5 +96,31 @@ def test_a_lesson_comes_before_its_task(page: Page, server) -> None:
 
 
 def test_an_item_without_a_lesson_has_no_lesson_section(page: Page, server) -> None:
-    page.goto(server.base_url + "/item/" + ITEM)
+    page.goto(server.base_url + "/item/playwright/04-ferry-booking")
     expect(page.locator("#lesson")).to_have_count(0)
+
+
+def test_the_course_starts_with_lesson_one(page: Page, server) -> None:
+    page.goto(server.base_url + "/")
+    first = page.locator("#course li").first
+    expect(first).to_contain_text("A first Playwright test")
+    expect(first.locator("a")).to_have_attribute("href", "/item/" + ITEM)
+    expect(page.locator("#waiting a[href='/item/playwright/04-ferry-booking']")).to_have_count(1)
+
+
+def test_the_lesson_holds_the_only_h1(page: Page, server) -> None:
+    page.goto(server.base_url + "/item/" + ITEM)
+    expect(page.locator("h1")).to_have_count(1)
+    expect(page.locator("#lesson h1")).to_have_text(
+        "A first Playwright test, and what makes it worth anything"
+    )
+
+
+def test_the_real_app_is_one_click_away(page: Page, server) -> None:
+    page.goto(server.base_url + "/item/" + ITEM)
+    address = page.locator("#app a").first.get_attribute("href")
+    expect(page.locator("#app")).to_contain_text("codegen --target python-pytest " + address)
+
+    page.goto(address)
+    expect(page.locator("#heading")).to_have_text("Dockside Seat Desk")
+    expect(page.locator("#seat option")).to_have_count(4)

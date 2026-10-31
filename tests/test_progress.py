@@ -54,7 +54,8 @@ def test_the_index_shows_where_each_item_stands(page: Page, server, run_dir) -> 
     attempts = progress.AttemptLog(run_dir / "attempts.jsonl")
     attempts.record(ITEM, "mine.py", False, cells([("real", "silent")]))
     page.goto(server.base_url + "/")
-    expect(page.locator("#items li", has_text=ITEM)).to_contain_text("rejected")
+    step = page.locator("#course li", has=page.locator(f"a[href='/item/{ITEM}']"))
+    expect(step).to_contain_text("rejected")
 
 
 def test_the_attempt_command_records_the_gate_verdict(run_dir) -> None:
@@ -71,3 +72,6 @@ def test_the_attempt_command_records_the_gate_verdict(run_dir) -> None:
     assert record["accepted"] is False
     assert {c["cell"] for c in record["cells"]} == {"silent"}
     assert record["cells"][0]["environment"] == "real"
+    for cell in record["cells"]:
+        assert cell["traces"], f"no trace kept for {cell['environment']}"
+        assert all(pathlib.Path(t).is_file() for t in cell["traces"])
