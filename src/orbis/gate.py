@@ -8,8 +8,8 @@ vectors is what catches that.
 """
 
 import argparse
-import pathlib
 import os
+import pathlib
 import subprocess
 import sys
 
@@ -58,7 +58,7 @@ def browsers_path():
     built = subprocess.run(
         ["nix", "build", "--no-link", "--print-out-paths",
          "nixpkgs#playwright-driver.browsers"],
-        capture_output=True, text=True,
+        capture_output=True, text=True, check=False,
     )
     if built.returncode != 0:
         raise SystemExit(

@@ -59,6 +59,7 @@ def materialize(app_dir, patch_path, dest):
         cwd=dest,
         capture_output=True,
         text=True,
+        check=False,
     )
     if applied.returncode != 0:
         raise MutationError(

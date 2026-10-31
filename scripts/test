@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+# scripts/test — the real gate over every item.
+#
+# WHAT IT RUNS. `selfcheck` on each item, which grades the item's reference AND
+# every candidate the item ships to be rejected. Grading only the reference
+# would tell us an item passes its own answer, which is the claim this whole
+# project argues proves nothing. The rejected candidates are what make the run
+# evidence.
+#
+# THE FAST TIER IS NOT THE GATE. --fast starts no browser, so it can check that
+# every item is structurally whole and that every mutation still applies, and it
+# cannot check that anything discriminates. Use it for tight iteration and gate
+# on the default.
+set -uo pipefail
+
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT" || exit 2
+
+FAST=0
+for arg in "$@"; do
+  case "$arg" in
+    --fast) FAST=1 ;;
+    -h|--help) sed -n '2,14p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    *) echo "test: unknown argument: $arg" >&2; exit 2 ;;
+  esac
+done
+
+pass=0
+fail=0
+failed_names=""
+
+ok()   { printf '  PASS  %s\n' "$1"; pass=$((pass + 1)); }
+bad()  { printf '  FAIL  %s\n' "$1"; fail=$((fail + 1)); failed_names="${failed_names}  - ${1}"$'\n'; }
+
+# ---------------------------------------------------------------------------
+# Item discovery. An item is a directory holding an app/, so a half-written
+# directory is not silently counted as a passing item.
+# ---------------------------------------------------------------------------
+ITEMS=()
+while IFS= read -r d; do
+  ITEMS+=("$d")
+done < <(find items -mindepth 2 -maxdepth 2 -type d -exec test -d '{}/app' ';' -print 2>/dev/null | sort)
+
+if [ "${#ITEMS[@]}" -eq 0 ]; then
+  echo "test: no items found under items/. An empty corpus is not a pass." >&2
+  exit 2
+fi
+printf 'items: %d\n\n' "${#ITEMS[@]}"
+
+# ---------------------------------------------------------------------------
+# TIER 1, no browser. Structure, then whether every mutation still applies.
+#
+# A mutation is a patch rather than a fork so the diff states what broke, and
+# the cost of that choice is that a patch rots when the app moves. This tier is
+# what catches the rot, and it is why --fast is worth having at all.
+# ---------------------------------------------------------------------------
+echo "tier 1, no browser:"
+for item in "${ITEMS[@]}"; do
+  name="${item#items/}"
+  missing=""
+  for need in TASK.md app reference mutations candidates; do
+    [ -e "${item}/${need}" ] || missing="${missing} ${need}"
+  done
+  if [ -n "$missing" ]; then
+    bad "${name}: missing${missing}"
+    continue
+  fi
+
+  refs=$(find "${item}/reference" -name '*.py' | wc -l)
+  if [ "$refs" -ne 1 ]; then
+    bad "${name}: reference/ holds ${refs} files, it must hold exactly one"
+    continue
+  fi
+
+  cands=$(find "${item}/candidates" -name '*.py' | wc -l)
+  if [ "$cands" -eq 0 ]; then
+    bad "${name}: candidates/ is empty, so the gate can never be watched failing"
+    continue
+  fi
+
+  pats=$(find "${item}/mutations" -name '*.patch' | wc -l)
+  if [ "$pats" -eq 0 ]; then
+    bad "${name}: mutations/ is empty, so nothing discriminates"
+    continue
+  fi
+
+  # Every .py has to parse before a browser is worth starting.
+  if ! uv run --quiet python -m compileall -q "${item}/reference" "${item}/candidates" >/dev/null 2>&1; then
+    bad "${name}: a reference or candidate does not parse"
+    continue
+  fi
+
+  # Every patch has to still apply to the app as it stands now.
+  rot=""
+  work=$(mktemp -d)
+  cp -r "${item}/app" "${work}/app"
+  while IFS= read -r patch; do
+    if ! (cd "${work}/app" && git apply --check --whitespace=nowarn "$patch") 2>/dev/null; then
+      rot="${rot} $(basename "$patch")"
+    fi
+  done < <(find "$(cd "${item}/mutations" && pwd)" -name '*.patch' | sort)
+  rm -rf "$work"
+
+  if [ -n "$rot" ]; then
+    bad "${name}: mutation(s) no longer apply:${rot}"
+    continue
+  fi
+
+  ok "${name}: whole, ${refs} reference, ${cands} candidate(s), ${pats} mutation(s), all applying"
+done
+
+if [ "$FAST" = "1" ]; then
+  echo
+  echo "NOT CHECKED: whether anything DISCRIMINATES. --fast starts no browser,"
+  echo "so no item was graded. This is not the gate."
+  if [ "$fail" -ne 0 ]; then
+    printf 'FAILED: %d passed, %d failed\n%s' "$pass" "$fail" "$failed_names" >&2
+    exit 1
+  fi
+  printf 'OK (fast): %d passed\n' "$pass"
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# TIER 2, the gate. One selfcheck per item.
+# ---------------------------------------------------------------------------
+echo
+echo "tier 2, the gate:"
+
+if [ -z "${PLAYWRIGHT_BROWSERS_PATH:-}" ]; then
+  # Resolved rather than guessed: the browsers Playwright downloads for itself
+  # are not linked for NixOS and will not start.
+  if ! PLAYWRIGHT_BROWSERS_PATH="$(nix build --no-link --print-out-paths nixpkgs#playwright-driver.browsers 2>/dev/null | tail -1)"; then
+    echo "test: PLAYWRIGHT_BROWSERS_PATH is unset and nix could not build the browsers." >&2
+    echo "  Run: source env.sh" >&2
+    exit 2
+  fi
+  export PLAYWRIGHT_BROWSERS_PATH
+fi
+export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+printf '  browsers: %s\n' "$PLAYWRIGHT_BROWSERS_PATH"
+
+LOGDIR="$(mktemp -d)"
+for item in "${ITEMS[@]}"; do
+  name="${item#items/}"
+  log="${LOGDIR}/$(echo "$name" | tr '/' '-').log"
+  start=$SECONDS
+  uv run --quiet python -m orbis.gate selfcheck "$item" > "$log" 2>&1
+  rc=$?
+  took=$((SECONDS - start))
+  if [ "$rc" -eq 0 ]; then
+    ok "${name}: selfcheck OK  ${took}s"
+  else
+    bad "${name}: selfcheck rc=${rc}  ${took}s  (log: ${log})"
+    sed -n '/^SELFCHECK/p' "$log" | sed 's/^/        /'
+  fi
+done
+
+echo
+if [ "$fail" -ne 0 ]; then
+  printf 'FAILED: %d passed, %d failed\n%s' "$pass" "$fail" "$failed_names" >&2
+  exit 1
+fi
+rm -rf "$LOGDIR"
+printf 'OK: %d passed\n' "$pass"

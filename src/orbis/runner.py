@@ -139,6 +139,7 @@ def run(candidate, app_dir, patch, environment_name, browsers_path,
                     capture_output=True,
                     text=True,
                     timeout=timeout,
+                    check=False,
                 )
                 returncode = finished.returncode
             except subprocess.TimeoutExpired:
