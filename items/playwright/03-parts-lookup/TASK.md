@@ -36,8 +36,10 @@ For rule 4 you have to stub, because the real file never fails. Use
 
 - `app/` is the lookup itself. `app/parts.json` is the catalog, and your tests
   may name parts from it.
-- Your tests run against a `--base-url`, so `page.goto("/")` reaches it.
-- `page` is the pytest-playwright fixture. Nothing else is set up for you.
+- Write your tests in TypeScript with `@playwright/test`, in a file ending
+  `.spec.ts` under `learner/mine/`.
+- Each test gets a fresh `page`, and `await page.goto('/')` opens the lookup.
+  Nothing else is set up for you.
 
 ## How this is graded
 
