@@ -6,8 +6,8 @@ import { test } from '@playwright/test';
 
 test('the desk answers', async ({ page }) => {
   await page.goto('/');
-  await page.fill('#recipient', 'Ada Lovelace');
-  await page.fill('#postcode', '02139');
-  await page.fill('#weight', '2.5');
-  await page.click('#print');
+  await page.getByLabel('Recipient', { exact: true }).fill('Ada Lovelace');
+  await page.getByLabel('Postcode', { exact: true }).fill('02139');
+  await page.getByLabel('Weight (kg)', { exact: true }).fill('2.5');
+  await page.getByRole('button', { name: 'Print label' }).click();
 });

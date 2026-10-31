@@ -15,27 +15,27 @@ async function openLookup(page: Page) {
   await page.goto('/');
   // Waiting for the box to come on is waiting for the catalog, so every test
   // after this sees the real parts.json and not an empty list.
-  await expect(page.locator('#search')).toBeEnabled();
+  await expect(page.getByRole('searchbox', { name: 'Search' })).toBeEnabled();
 }
 
 test('loading notice clears', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('#status')).toHaveText('Loading parts...');
-  await expect(page.locator('#search')).toBeDisabled();
+  await expect(page.getByRole('status')).toHaveText('Loading parts...');
+  await expect(page.getByRole('searchbox', { name: 'Search' })).toBeDisabled();
 
-  await expect(page.locator('#status')).toHaveText('');
-  await expect(page.locator('#search')).toBeEnabled();
+  await expect(page.getByRole('status')).toHaveText('');
+  await expect(page.getByRole('searchbox', { name: 'Search' })).toBeEnabled();
 });
 
 test('lists every part', async ({ page }) => {
   await openLookup(page);
-  await expect(page.locator('li.part')).toHaveText(CATALOG);
+  await expect(page.getByRole('listitem')).toHaveText(CATALOG);
 });
 
 test('search by name ignores case', async ({ page }) => {
   await openLookup(page);
-  await page.fill('#search', 'BRAKE');
-  await expect(page.locator('li.part')).toHaveText([
+  await page.getByRole('searchbox', { name: 'Search' }).fill('BRAKE');
+  await expect(page.getByRole('listitem')).toHaveText([
     'BRK-1042 Front brake pad set',
     'BRK-1077 Rear brake rotor',
   ]);
@@ -43,8 +43,8 @@ test('search by name ignores case', async ({ page }) => {
 
 test('search by part number', async ({ page }) => {
   await openLookup(page);
-  await page.fill('#search', 'FLT-20');
-  await expect(page.locator('li.part')).toHaveText([
+  await page.getByRole('searchbox', { name: 'Search' }).fill('FLT-20');
+  await expect(page.getByRole('listitem')).toHaveText([
     'FLT-2010 Oil filter',
     'FLT-2033 Cabin air filter',
   ]);
@@ -52,8 +52,9 @@ test('search by part number', async ({ page }) => {
 
 test('search with no match', async ({ page }) => {
   await openLookup(page);
-  await page.fill('#search', 'carburetor');
-  await expect(page.locator('li.part')).toHaveCount(0);
+  await page.getByRole('searchbox', { name: 'Search' }).fill('carburetor');
+  await expect(page.getByRole('listitem')).toHaveCount(0);
+  // The no-match line is a bare <p> with no role or name to reach it by.
   await expect(page.locator('#empty')).toHaveText('No parts match "carburetor".');
 });
 
@@ -66,9 +67,9 @@ test('failed catalog is reported', async ({ page }) => {
     route.fulfill({ status: 500, json: { error: 'catalog offline' } }),
   );
   await page.goto('/');
-  await expect(page.locator('#error')).toHaveText("Couldn't load the parts catalog.");
-  await expect(page.locator('#status')).toHaveText('');
-  await expect(page.locator('li.part')).toHaveCount(0);
+  await expect(page.getByRole('alert')).toHaveText("Couldn't load the parts catalog.");
+  await expect(page.getByRole('status')).toHaveText('');
+  await expect(page.getByRole('listitem')).toHaveCount(0);
 });
 
 test('empty catalog is reported', async ({ page }) => {
@@ -76,7 +77,7 @@ test('empty catalog is reported', async ({ page }) => {
     route.fulfill({ status: 200, json: [] }),
   );
   await page.goto('/');
-  await expect(page.locator('#error')).toHaveText('The parts catalog is empty.');
-  await expect(page.locator('#status')).toHaveText('');
-  await expect(page.locator('li.part')).toHaveCount(0);
+  await expect(page.getByRole('alert')).toHaveText('The parts catalog is empty.');
+  await expect(page.getByRole('status')).toHaveText('');
+  await expect(page.getByRole('listitem')).toHaveCount(0);
 });

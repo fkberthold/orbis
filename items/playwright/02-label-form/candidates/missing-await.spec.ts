@@ -6,16 +6,16 @@ import { test, expect } from '@playwright/test';
 
 test('valid label prints', async ({ page }) => {
   await page.goto('/');
-  await page.fill('#recipient', 'Ada Lovelace');
-  await page.fill('#postcode', '02139');
-  await page.fill('#weight', '2.5');
-  await page.selectOption('#service', 'Standard');
-  await page.click('#print');
+  await page.getByLabel('Recipient', { exact: true }).fill('Ada Lovelace');
+  await page.getByLabel('Postcode', { exact: true }).fill('02139');
+  await page.getByLabel('Weight (kg)', { exact: true }).fill('2.5');
+  await page.getByLabel('Service', { exact: true }).selectOption('Standard');
+  await page.getByRole('button', { name: 'Print label' }).click();
 
-  expect(page.locator('li.label')).toHaveText([
+  expect(page.getByRole('listitem')).toHaveText([
     'Ada Lovelace, 02139, 2.5 kg, Standard',
   ]);
-  expect(page.locator('#recipient')).toHaveValue('');
-  expect(page.locator('#postcode')).toHaveValue('');
-  expect(page.locator('#weight')).toHaveValue('');
+  expect(page.getByLabel('Recipient', { exact: true })).toHaveValue('');
+  expect(page.getByLabel('Postcode', { exact: true })).toHaveValue('');
+  expect(page.getByLabel('Weight (kg)', { exact: true })).toHaveValue('');
 });

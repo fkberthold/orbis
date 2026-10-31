@@ -102,5 +102,5 @@ ten-minute budget.
    has a carefully made worked version behind the same line-by-line reveal the
    other steps use, and the learner checks their own after trying.
 3. **The existing lessons 01 to 03** become the guides for steps 2, 4 and 12.
-   They use the discouraged `page.click(selector)` style and say ids first,
-   which bead orb-eei.17 fixes.
+   They used the discouraged `page.click(selector)` style and said ids first,
+   and bead orb-eei.17 moved them to locators, role first.

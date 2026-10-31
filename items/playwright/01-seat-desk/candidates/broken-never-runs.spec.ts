@@ -5,5 +5,6 @@ import { openDesk } from './helpers-that-do-not-exist';
 
 test('reserve succeeds', async ({ page }) => {
   await openDesk(page);
+  // The banner is a bare <p> with no role or name to reach it by.
   await expect(page.locator('#banner')).toHaveText('Reserved A1 for Ada.');
 });

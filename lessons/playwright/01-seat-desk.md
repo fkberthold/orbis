@@ -10,10 +10,10 @@ import { test, expect } from '@playwright/test';
 
 test('a tool can be checked out', async ({ page }) => {
   await page.goto('/');
-  await page.fill('#borrower', 'Sam');
-  await page.selectOption('#tool', 'torque wrench');
-  await page.click('#checkout');
-  await expect(page.locator('#loans li')).toHaveCount(1);
+  await page.getByLabel('Borrower').fill('Sam');
+  await page.getByLabel('Tool').selectOption('torque wrench');
+  await page.getByRole('button', { name: 'Check out' }).click();
+  await expect(page.getByRole('listitem')).toHaveCount(1);
 });
 ```
 
@@ -30,26 +30,38 @@ pick decides what your test survives.
 
 | you find it by | for example | survives | breaks when |
 |---|---|---|---|
-| an id | `page.locator('#checkout')` | restyling, moving it around | someone renames the id |
-| its role and name | `page.getByRole('button', { name: 'Check out' })` | restyling, new ids | the label's wording changes |
+| its role and name | `page.getByRole('button', { name: 'Check out' })` | restyling, new ids, moving it around | the label's wording changes |
+| its label | `page.getByLabel('Borrower')` | the same | the label's wording changes |
 | its text | `page.getByText('Check out')` | most markup changes | the wording changes, or two things share it |
+| an id | `page.locator('#checkout')` | restyling, moving it around | someone renames the id |
 | its place in the layout | `page.locator('form > div:nth-child(3) button')` | almost nothing | anything moves |
 
-I'd reach for ids and roles first. The apps in this course give the parts that
-matter an id, so `'#something'` is usually the plain choice. The last row is the
-one to avoid, because it tests the layout by accident.
+Playwright's own advice is to start at the top row and go down only when you
+have to, and I'd follow it. A role and a name are what a person using the page
+sees, so a test written that way breaks when the page changes for a user and
+mostly holds when it changes only underneath. Some things on a page have no
+role or name to find them by, a plain paragraph of text for one, and that's
+what an id is for. The last row is the one to avoid, because it tests the
+layout by accident.
+
+You'll also see older tests written as `page.click('#checkout')`, with the
+selector handed to the page. That still runs, and the docs mark it
+discouraged. Find the thing first, then act on it.
 
 ## Doing things
 
-`click`, `fill` and `selectOption` don't fire blindly. Before a click,
-Playwright waits until the element is attached, visible, holding still,
+`click`, `fill` and `selectOption` are called on a locator, and they don't fire
+blindly. Before a click, Playwright waits until the element is attached, visible, holding still,
 enabled, and not covered by something else. It waits up to 30 seconds for
 that, and then fails. That wait is why most tests need no sleeps. It also means
 a click on a button the app has disabled sits there until it times out.
 
 When what you're testing is exactly what happens if someone clicks anyway, pass
-`{ force: true }`, as in `await page.click('#save', { force: true })`. It skips
-the checks and fires the click as is.
+`{ force: true }`. It skips the checks and fires the click as is.
+
+```ts
+await page.getByRole('button', { name: 'Save' }).click({ force: true });
+```
 
 ## Checking things
 

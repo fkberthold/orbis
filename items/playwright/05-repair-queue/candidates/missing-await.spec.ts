@@ -14,13 +14,17 @@ test('finish removes only that job', async ({ page }) => {
     await dialog.accept();
   });
   await page
-    .locator('li.job')
+    .getByRole('listitem')
     .filter({ hasText: '#103' })
     .getByRole('button', { name: 'Finish' })
     .click();
 
-  expect(page.locator('li.job').filter({ hasText: '#103' })).toHaveCount(0);
-  expect(page.locator('li.job')).toHaveCount(4);
-  expect(page.locator('#done li')).toHaveText(['#103 Brake pads (Chen)']);
+  const finish = page.getByRole('button', { name: 'Finish' });
+  const queueRows = page.getByRole('listitem').filter({ has: finish });
+  const doneRows = page.getByRole('listitem').filter({ hasNot: finish });
+
+  expect(queueRows.filter({ hasText: '#103' })).toHaveCount(0);
+  expect(queueRows).toHaveCount(4);
+  expect(doneRows).toHaveText(['#103 Brake pads (Chen)']);
   expect(message).toBe('Finish #103 Brake pads for Chen?');
 });

@@ -6,10 +6,11 @@ import { test, expect } from '@playwright/test';
 
 test('reserve succeeds', async ({ page }) => {
   await page.goto('/');
-  await page.fill('#name', 'Ada');
-  await page.selectOption('#seat', 'A1');
-  await page.click('#reserve');
+  await page.getByLabel('Name').fill('Ada');
+  await page.getByLabel('Seat').selectOption('A1');
+  await page.getByRole('button', { name: 'Reserve' }).click();
 
+  // The banner is a bare <p> with no role or name to reach it by.
   expect(page.locator('#banner')).toHaveText('Reserved A1 for Ada.');
-  expect(page.locator('li.reservation')).toHaveCount(1);
+  expect(page.getByRole('listitem')).toHaveCount(1);
 });

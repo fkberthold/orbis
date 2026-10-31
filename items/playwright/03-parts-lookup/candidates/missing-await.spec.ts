@@ -17,6 +17,6 @@ const CATALOG = [
 
 test('lists every part', async ({ page }) => {
   await page.goto('/');
-  expect(page.locator('#search')).toBeEnabled();
-  expect(page.locator('li.part')).toHaveText(CATALOG);
+  expect(page.getByRole('searchbox', { name: 'Search' })).toBeEnabled();
+  expect(page.getByRole('listitem')).toHaveText(CATALOG);
 });

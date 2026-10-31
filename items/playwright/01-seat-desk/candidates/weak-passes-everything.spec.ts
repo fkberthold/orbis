@@ -4,5 +4,5 @@ import { test, expect } from '@playwright/test';
 
 test('the desk loads', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('#heading')).toHaveText('Dockside Seat Desk');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Dockside Seat Desk');
 });

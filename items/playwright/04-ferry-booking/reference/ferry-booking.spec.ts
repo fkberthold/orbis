@@ -1,18 +1,19 @@
 import { test, expect, Page } from '@playwright/test';
 
+// Each step's title is the only second-level heading on the page.
 function stepTitle(page: Page) {
-  return page.locator('#step-title');
+  return page.getByRole('heading', { level: 2 });
 }
 
 async function pickCrossing(page: Page, label: string) {
-  await page.getByLabel(label).check();
+  await page.getByRole('radio', { name: label }).check();
   await page.getByRole('button', { name: 'Next' }).click();
   await expect(stepTitle(page)).toHaveText('2. Passengers');
 }
 
 async function enterPassengers(page: Page, lead: string, count: string) {
-  await page.getByLabel('Lead passenger').fill(lead);
-  await page.getByLabel('Passengers', { exact: true }).selectOption(count);
+  await page.getByRole('textbox', { name: 'Lead passenger' }).fill(lead);
+  await page.getByRole('combobox', { name: 'Passengers', exact: true }).selectOption(count);
   await page.getByRole('button', { name: 'Next' }).click();
   await expect(stepTitle(page)).toHaveText('3. Review and confirm');
 }
@@ -24,18 +25,20 @@ test('back keeps entries', async ({ page }) => {
 
   await page.goBack();
   await expect(stepTitle(page)).toHaveText('2. Passengers');
-  await expect(page.getByLabel('Lead passenger')).toHaveValue('Ada');
-  await expect(page.getByLabel('Passengers', { exact: true })).toHaveValue('2');
+  await expect(page.getByRole('textbox', { name: 'Lead passenger' })).toHaveValue('Ada');
+  await expect(page.getByRole('combobox', { name: 'Passengers', exact: true })).toHaveValue('2');
 
   await page.goBack();
   await expect(stepTitle(page)).toHaveText('1. Pick a crossing');
-  await expect(page.getByLabel('07:30 Harbor to Gull Isle')).toBeChecked();
+  await expect(page.getByRole('radio', { name: '07:30 Harbor to Gull Isle' })).toBeChecked();
 });
 
 test('review shows changes', async ({ page }) => {
   await page.goto('/');
   await pickCrossing(page, '07:30 Harbor to Gull Isle');
   await enterPassengers(page, 'Ada', '2');
+  // The review values sit in <dd> elements with no name to reach them by, so
+  // they're found by id.
   await expect(page.locator('#review-fare')).toHaveText('$24');
 
   await page.goBack();
@@ -58,6 +61,7 @@ test('confirm twice books once', async ({ page }) => {
   await enterPassengers(page, 'Ada', '1');
   await page.getByRole('button', { name: 'Confirm' }).click();
 
+  // A bare <p> with no role or name to reach it by.
   const reference = page.locator('#reference');
   await expect(reference).toHaveText(/Booking FB-\d+/);
   const first = await reference.innerText();
@@ -67,7 +71,7 @@ test('confirm twice books once', async ({ page }) => {
   await page.getByRole('button', { name: 'Confirm' }).click();
 
   await expect(reference).toHaveText(first);
-  await expect(page.locator('li.booking')).toHaveCount(1);
+  await expect(page.getByRole('listitem')).toHaveCount(1);
 });
 
 test('deep link starts over', async ({ page }) => {
