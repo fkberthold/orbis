@@ -4,7 +4,7 @@ import { test } from '@playwright/test';
 
 test('reserve a seat', async ({ page }) => {
   await page.goto('/');
-  await page.fill('#name', 'Ada');
-  await page.selectOption('#seat', 'A1');
-  await page.click('#reserve');
+  await page.getByLabel('Name').fill('Ada');
+  await page.getByLabel('Seat').selectOption('A1');
+  await page.getByRole('button', { name: 'Reserve' }).click();
 });
