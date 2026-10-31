@@ -84,11 +84,14 @@ def report(item, candidate, runs):
     print(f"ITEM  {item.root}")
     print(f"CAND  {candidate.relative_to(item.root)}")
     print()
-    print(f"  {'environment':<28}{'cell':<13}{'vector':<26}note")
+    # Wide enough for the longest name, so a long one can't run into its cell.
+    width = max(28, *(len(run.environment) + 2 for run in runs))
+    vec = max(26, *(len(run.vector_text) + 2 for run in runs))
+    print(f"  {'environment':<{width}}{'cell':<13}{'vector':<{vec}}note")
     for run in runs:
         print(
-            f"  {run.environment:<28}{run.cell:<13}"
-            f"{run.vector_text:<26}{run.note}"
+            f"  {run.environment:<{width}}{run.cell:<13}"
+            f"{run.vector_text:<{vec}}{run.note}"
         )
     print()
     names = [outcome.name for outcome in runs[0].tests]
@@ -191,7 +194,10 @@ def command_filter(args):
     """
     item = Item(args.item)
     if args.mutations:
-        item.mutations = sorted(pathlib.Path(args.mutations).glob("*.patch"))
+        # Resolved, because git apply runs from inside a temporary copy and a
+        # relative path would point somewhere else from there.
+        mutations = pathlib.Path(args.mutations).resolve()
+        item.mutations = sorted(mutations.glob("*.patch"))
     item.check()
 
     runs = grade(item, item.reference, browsers_path())
