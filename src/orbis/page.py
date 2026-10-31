@@ -133,7 +133,7 @@ def find_lessons(items_root):
     lessons_root = pathlib.Path(items_root).parent / "lessons"
     return {
         path.relative_to(lessons_root).with_suffix("").as_posix(): path
-        for path in sorted(lessons_root.glob("*/*.md"))
+        for path in sorted(lessons_root.glob("*/[0-9]*.md"))
     }
 
 
