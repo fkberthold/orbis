@@ -100,11 +100,11 @@ def test_an_item_without_a_lesson_has_no_lesson_section(page: Page, server) -> N
     expect(page.locator("#lesson")).to_have_count(0)
 
 
-def test_the_course_starts_with_lesson_one(page: Page, server) -> None:
+def test_lesson_one_is_the_second_step(page: Page, server) -> None:
     page.goto(server.base_url + "/")
-    first = page.locator("#course li").first
-    expect(first).to_contain_text("A first Playwright test")
-    expect(first.locator("a")).to_have_attribute("href", "/item/" + ITEM)
+    second = page.locator("#course li").nth(1)
+    expect(second).to_contain_text("A first Playwright test")
+    expect(second.locator("a")).to_have_attribute("href", "/item/" + ITEM)
     expect(page.locator("#waiting a[href='/item/playwright/04-ferry-booking']")).to_have_count(1)
 
 
@@ -124,3 +124,12 @@ def test_the_real_app_is_one_click_away(page: Page, server) -> None:
     page.goto(address)
     expect(page.locator("#heading")).to_have_text("Dockside Seat Desk")
     expect(page.locator("#seat option")).to_have_count(4)
+
+
+def test_a_lesson_with_no_item_is_still_a_step(page: Page, server) -> None:
+    page.goto(server.base_url + "/")
+    first = page.locator("#course li").first
+    expect(first).to_contain_text("Just enough TypeScript")
+    first.locator("a").click()
+    expect(page.locator("#lesson h1")).to_have_text("Just enough TypeScript to read a Playwright test")
+    expect(page.locator("#app")).to_have_count(0)

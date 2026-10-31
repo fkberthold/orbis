@@ -128,30 +128,56 @@ def _first_heading(path, fallback):
     return fallback
 
 
-def render_index(items, attempts):
+def find_lessons(items_root):
+    """Every lesson beside items/, keyed the way items are, in course order."""
+    lessons_root = pathlib.Path(items_root).parent / "lessons"
+    return {
+        path.relative_to(lessons_root).with_suffix("").as_posix(): path
+        for path in sorted(lessons_root.glob("*/*.md"))
+    }
+
+
+def render_index(items, attempts, lessons=None):
     """The course: each lesson in order, with its practice item behind it.
 
-    An item with no lesson yet is listed apart. It can still be worked, but it
-    isn't a step on the path, and mixing it in would hide that.
+    A lesson with no item, like the one on just enough TypeScript, is still a
+    step and gets a page of its own. An item with no lesson yet is listed
+    apart. It can still be worked, but it isn't a step on the path, and mixing
+    it in would hide that.
     """
+    if lessons is None:
+        lessons = {
+            name: lesson_of(name, item)
+            for name, item in items.items() if lesson_of(name, item).is_file()
+        }
     steps, waiting = [], []
-    for name, item in items.items():
-        last = attempts.last(name)
-        status = (
-            f" <span class=\"status {_verdict_word(last)}\">{_verdict_word(last)}</span>"
-            if last else ""
-        )
-        link = f"<a href=\"/item/{html.escape(name)}\">"
-        lesson = lesson_of(name, item)
-        if lesson.is_file():
+    for name in sorted(lessons):
+        title = html.escape(_first_heading(lessons[name], name))
+        if name in items:
+            last = attempts.last(name)
+            status = (
+                f" <span class=\"status {_verdict_word(last)}\">{_verdict_word(last)}</span>"
+                if last else ""
+            )
             steps.append(
-                f"  <li>{link}{html.escape(_first_heading(lesson, name))}</a>"
-                f" <span class=\"title\">then practice: {html.escape(task_title(item))}"
+                f"  <li><a href=\"/item/{html.escape(name)}\">{title}</a>"
+                f" <span class=\"title\">then practice: {html.escape(task_title(items[name]))}"
                 f"</span>{status}</li>"
             )
         else:
+            steps.append(
+                f"  <li><a href=\"/lesson/{html.escape(name)}\">{title}</a>"
+                " <span class=\"title\">a lesson to read, with nothing to practice yet</span></li>"
+            )
+    for name, item in items.items():
+        if name not in lessons:
+            last = attempts.last(name)
+            status = (
+                f" <span class=\"status {_verdict_word(last)}\">{_verdict_word(last)}</span>"
+                if last else ""
+            )
             waiting.append(
-                f"  <li>{link}{html.escape(task_title(item))}</a>"
+                f"  <li><a href=\"/item/{html.escape(name)}\">{html.escape(task_title(item))}</a>"
                 f" <span class=\"title\">{html.escape(name)}</span>{status}</li>"
             )
     body = "<main>\n<h1>Orbis: Playwright</h1>\n"
@@ -164,6 +190,15 @@ def render_index(items, attempts):
             "<ul>\n" + "\n".join(waiting) + "\n</ul>\n</section>\n"
         )
     return _shell("Orbis", body + "</main>")
+
+
+def render_lesson_page(name, path):
+    """A lesson with no practice item behind it, on a page of its own."""
+    body = (
+        "<main>\n<p class=\"crumbs\"><a href=\"/\">the course</a></p>\n"
+        f"<section id=\"lesson\">\n{_MARKDOWN.render(path.read_text())}</section>\n</main>"
+    )
+    return _shell(_first_heading(path, name), body)
 
 
 def _spec_name(name):
@@ -280,7 +315,7 @@ def render_item(name, item, revealed, last=None, app_url=None):
     return _shell(task_title(item), body)
 
 
-def _handler(items, log, attempts, apps):
+def _handler(items, log, attempts, apps, lessons):
     class Handler(http.server.BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
             pass
@@ -297,8 +332,13 @@ def _handler(items, log, attempts, apps):
         def do_GET(self):
             path = self.path.split("?", 1)[0]
             if path == "/":
-                page = render_index(items, attempts)
+                page = render_index(items, attempts, lessons)
                 return self._send(200, "text/html; charset=utf-8", page)
+            if path.startswith("/lesson/"):
+                name = path[len("/lesson/"):]
+                if name in lessons:
+                    page = render_lesson_page(name, lessons[name])
+                    return self._send(200, "text/html; charset=utf-8", page)
             if path.startswith("/item/"):
                 name = path[len("/item/"):]
                 if name in items:
@@ -358,7 +398,7 @@ class Server:
         }
         handler = _handler(
             self.items, progress.RevealLog(self.log), progress.AttemptLog(attempts),
-            self.apps,
+            self.apps, find_lessons(items_root),
         )
         self._server = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
         self.port = self._server.server_address[1]
