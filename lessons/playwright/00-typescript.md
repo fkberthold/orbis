@@ -52,19 +52,22 @@ So every Playwright call in a test gets `await` in front of it. Every `goto`,
 every `fill`, every `click`, and every `expect` on a locator.
 
 What a missing `await` does depends on where it's missing. These were measured
-on the first practice app, against the real app and against a copy with one
-thing broken:
+on the practice apps, each against the real app and a copy with one thing
+broken:
 
 | `await` missing on | what happened |
 |---|---|
 | a click or a fill | It worked anyway, because Playwright sends commands in the order you start them. That's luck, and you can't build on it. |
-| an `expect` the page hasn't met yet | The test failed even against the working app. Playwright fails an assertion that's still waiting when the test ends. |
+| an `expect` on the test's last line, that the page hasn't met yet | The test failed even against the working app. Playwright fails an assertion that's still waiting when the test ends. |
+| an `expect` in the middle of a test | It kept checking in the background while the next lines ran. On the booking app it happened to pass and to catch its broken copy. |
 | an `expect` that's already true when it runs | The test passed against the working app **and** the broken one. It checked nothing. |
 
 The last row is the one to fear. `expect(rows).toHaveCount(0)` with no `await`,
 right after a click, passes the instant it looks, before the app has done
 anything. Nothing goes red to tell you. I think it's the most expensive one
-word you can leave out of a Playwright test.
+word you can leave out of a Playwright test. The middle row is the other quiet one. An
+assertion left running in the background is checking the page while your next
+lines change it, and I suspect what it ends up checking is mostly luck.
 
 ## The habit
 

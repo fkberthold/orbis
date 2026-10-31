@@ -67,8 +67,10 @@ item is not done without them:
   must read `silent` everywhere
 - one that cannot be collected, which must read `did-not-run` everywhere
 - one that drops the `await` from its assertions, which the gate must reject
-  however it gets there. On every item so far that's G1, because Playwright
-  fails an assertion still pending when the test ends.
+  however it gets there, and say which condition did it. When the dropped
+  awaits sit at the end of a test, Playwright fails them as still pending and
+  G1 rejects it (items 01 and 02). When awaited steps follow them, they finish
+  in the background and only G2 catches it (item 04).
 
 The second is the one that matters. A pass-or-fail instrument calls it correct.
 
