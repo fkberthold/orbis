@@ -5,5 +5,5 @@ import { test, expect } from '@playwright/test';
 
 test('the queue loads', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('li.job')).toHaveCount(5);
+  await expect(page.getByRole('listitem')).toHaveCount(5);
 });
