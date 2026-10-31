@@ -41,40 +41,42 @@ def find_items(items_root):
 
 
 def reference_of(item):
-    return min((item / "reference").glob("*.py"))
+    return min((item / "reference").glob("*.spec.ts"))
 
 
 def _words(name):
-    return name.replace("_", " ").strip()
+    """'reserveSucceeds' or 'reserve_succeeds' as 'reserve succeeds'."""
+    name = re.sub(r"(?<=[a-z0-9])([A-Z])", r" \1", name)
+    return name.replace("_", " ").strip().lower()
 
 
 def margin_for(text):
     """Say roughly what kind of line this is, without saying what it does."""
     line = text.strip()
-    test = re.match(r"def test_(\w+)", line)
+    test = re.match(r"test(?:\.\w+)?\(\s*['\"`](.+?)['\"`]", line)
     if test:
-        return "a test: " + _words(test.group(1))
-    helper = re.match(r"def (\w+)", line)
+        return "a test: " + test.group(1)
+    helper = re.match(r"(?:export\s+)?(?:async\s+)?function\s+(\w+)", line)
     if helper:
         return "a helper: " + _words(helper.group(1))
-    if line.startswith(("import ", "from ")):
+    if line.startswith("import "):
         return "imports"
-    if line.startswith("#"):
+    if line.startswith(("//", "/*", "*")):
         return "a note on why"
-    if line.startswith(('"""', "'''")):
-        return "a note"
+    line = line.removeprefix("await ")
     if line.startswith("expect("):
-        return "check the result"
-    if line.startswith("assert "):
         return "check the result"
     for call, note in (
         ("page.goto", "open the page"),
         ("page.fill", "fill a field"),
-        ("page.select_option", "pick an option"),
+        ("page.selectOption", "pick an option"),
         ("page.dblclick", "double click"),
         ("page.click", "click"),
         ("page.route", "stub the network"),
-        ("page.wait_for", "wait"),
+        ("page.once", "handle a dialog"),
+        ("page.on", "handle an event"),
+        ("page.goBack", "go back"),
+        ("page.waitFor", "wait"),
     ):
         if line.startswith(call):
             return note
@@ -164,7 +166,11 @@ def render_index(items, attempts):
     return _shell("Orbis", body + "</main>")
 
 
-def render_app(url):
+def _spec_name(name):
+    return f"mine/{name.rsplit('/', 1)[-1]}.spec.ts"
+
+
+def render_app(name, url):
     """Where the learner drives the real app while writing tests.
 
     The tests are written against the live page, so it's one click away. Only
@@ -172,15 +178,19 @@ def render_app(url):
     exploring them first would mean testing the breaks instead of the rules.
     """
     url = html.escape(url)
+    spec = html.escape(_spec_name(name))
+    run = f"BASE_URL={url} npx playwright test {spec}"
     return (
         "<section id=\"app\">\n<h2>The app</h2>\n"
         f"<p>The real app is running at <a href=\"{url}\" target=\"_blank\">{url}</a>."
         " Poke at it, watch what changes and when, and write your tests against it.</p>\n"
-        "<p class=\"hint\">In a shell, after <code>source env.sh</code>:</p>\n"
+        f"<p class=\"hint\">Write your tests in <code>learner/{spec}</code>. In a shell,"
+        " after <code>source env.sh</code> and <code>cd learner</code>:</p>\n"
         "<table>\n"
-        f"<tr><td>record clicks and pick up selectors</td><td><code>uv run playwright codegen --target python-pytest {url}</code></td></tr>\n"
-        f"<tr><td>watch your tests run, slowed down</td><td><code>uv run pytest my_test.py --base-url {url} --headed --slowmo 500</code></td></tr>\n"
-        f"<tr><td>step through with the inspector</td><td><code>PWDEBUG=1 uv run pytest my_test.py --base-url {url}</code></td></tr>\n"
+        f"<tr><td>record clicks as test code, and pick up selectors</td><td><code>npx playwright codegen --target playwright-test {url}</code></td></tr>\n"
+        f"<tr><td>run your tests step by step, with the page beside them</td><td><code>{run} --ui</code></td></tr>\n"
+        f"<tr><td>watch your tests run in a browser</td><td><code>{run} --headed</code></td></tr>\n"
+        f"<tr><td>pause on each action with the inspector</td><td><code>{run} --debug</code></td></tr>\n"
         "</table>\n</section>"
     )
 
@@ -189,7 +199,7 @@ def render_attempt(name, last):
     """The gate's verdict on the learner's latest file, cell by cell."""
     command = (
         f"uv run python -m orbis.gate attempt items/{html.escape(name)}"
-        " --candidate &lt;your test file&gt;"
+        f" --candidate learner/{html.escape(_spec_name(name))}"
     )
     if last is None:
         return (
@@ -200,7 +210,7 @@ def render_attempt(name, last):
     rows = "\n".join(
         f"<tr><td>{html.escape(c['environment'])}</td><td>{html.escape(c['cell'])}</td>"
         + "<td>" + "<br>".join(
-            f"<code>uv run playwright show-trace {html.escape(t)}</code>"
+            f"<code>npx playwright show-trace {html.escape(t)}</code>"
             for t in c.get("traces", [])
         ) + "</td></tr>"
         for c in last["cells"]
@@ -260,7 +270,7 @@ def render_item(name, item, revealed, last=None, app_url=None):
         "<p class=\"crumbs\"><a href=\"/\">the course</a></p>\n"
         f"{render_lesson(name, item)}"
         f"<section id=\"task\">\n{task}</section>\n"
-        f"{render_app(app_url) if app_url else ''}\n"
+        f"{render_app(name, app_url) if app_url else ''}\n"
         f"{render_attempt(name, last)}\n"
         "<section id=\"answer\">\n<h2>The worked answer</h2>\n"
         "<p class=\"hint\">Write your own attempt first. Each line opens on its own,"

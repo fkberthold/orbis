@@ -7,17 +7,25 @@ candidate against the real app, and the candidate against each deliberate
 break.
 """
 
+import contextlib
 import dataclasses
+import json
 import os
 import pathlib
 import shutil
 import subprocess
-import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
 from . import tracing, verdict
 from .environment import MutationError, Site, materialize
+
+# The node workspace the learner's TypeScript runs in. A spec has to sit inside
+# it, or `import ... from '@playwright/test'` can't be resolved, so every run
+# copies the candidate in rather than running it where it lies.
+LEARNER = pathlib.Path(
+    os.environ.get("ORBIS_LEARNER", pathlib.Path(__file__).resolve().parents[2] / "learner")
+)
 
 REAL = "real"
 RUN_TIMEOUT_S = 300
@@ -87,7 +95,7 @@ def _parse_junit(report):
 
 def _classify(returncode, outcomes, expects, asserted_in_source):
     if outcomes is None or not outcomes:
-        return verdict.DID_NOT_RUN, f"pytest exit {returncode}, no usable report"
+        return verdict.DID_NOT_RUN, f"the test run exited {returncode} with no usable report"
     if any(outcome.outcome == verdict.ERROR for outcome in outcomes):
         return verdict.DID_NOT_RUN, "a test errored rather than reaching a verdict"
     if any(outcome.outcome == verdict.FAIL for outcome in outcomes):
@@ -96,6 +104,41 @@ def _classify(returncode, outcomes, expects, asserted_in_source):
     if expects == 0 and not asserted_in_source:
         return verdict.VACUOUS, "passed without asserting anything"
     return verdict.SILENT, f"passed, {expects} assertion(s) executed"
+
+
+@contextlib.contextmanager
+def _staged(candidate, base_url, output, report):
+    """Copy candidate into the workspace beside a config written for this run.
+
+    The config pins everything the verdict depends on: the app's address, a
+    trace for every test, one worker so runs don't race each other, no
+    retries, and a junit report to read the outcomes from.
+    """
+    stage = pathlib.Path(tempfile.mkdtemp(prefix="run-", dir=_runs_dir()))
+    try:
+        shutil.copy(candidate, stage / candidate.name)
+        config = stage / "playwright.config.ts"
+        config.write_text(
+            "import { defineConfig } from '@playwright/test';\n"
+            "export default defineConfig({\n"
+            f"  testDir: {json.dumps(str(stage))},\n"
+            f"  testMatch: {json.dumps(candidate.name)},\n"
+            f"  outputDir: {json.dumps(str(output))},\n"
+            "  workers: 1,\n"
+            "  retries: 0,\n"
+            f"  reporter: [['junit', {{ outputFile: {json.dumps(str(report))} }}]],\n"
+            f"  use: {{ baseURL: {json.dumps(base_url)}, trace: 'on', browserName: 'chromium' }},\n"
+            "});\n"
+        )
+        yield config
+    finally:
+        shutil.rmtree(stage, ignore_errors=True)
+
+
+def _runs_dir():
+    runs = LEARNER / "runs"
+    runs.mkdir(parents=True, exist_ok=True)
+    return runs
 
 
 def run(candidate, app_dir, patch, environment_name, browsers_path,
@@ -120,21 +163,12 @@ def run(candidate, app_dir, patch, environment_name, browsers_path,
         environment["PLAYWRIGHT_BROWSERS_PATH"] = str(browsers_path)
         environment["PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD"] = "1"
 
-        with Site(served) as site:
-            command = [
-                sys.executable, "-m", "pytest", str(candidate),
-                "-p", "no:cacheprovider",
-                "--base-url", site.base_url,
-                "--browser", "chromium",
-                "--tracing", "on",
-                "--output", str(output),
-                "--junit-xml", str(report),
-                "-q",
-            ]
+        with Site(served) as site, _staged(candidate, site.base_url, output, report) as config:
+            command = ["npx", "playwright", "test", "--config", str(config)]
             try:
                 finished = subprocess.run(
                     command,
-                    cwd=work,
+                    cwd=LEARNER,
                     env=environment,
                     capture_output=True,
                     text=True,
@@ -145,7 +179,7 @@ def run(candidate, app_dir, patch, environment_name, browsers_path,
             except subprocess.TimeoutExpired:
                 return Run(
                     environment_name, verdict.DID_NOT_RUN, [], 0,
-                    f"pytest did not finish inside {timeout}s",
+                    f"the test run did not finish inside {timeout}s",
                 )
 
         outcomes = _parse_junit(report)

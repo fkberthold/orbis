@@ -15,7 +15,7 @@ from orbis import page as orbis_page
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 ITEM = "playwright/01-seat-desk"
-REFERENCE = ROOT / "items" / ITEM / "reference" / "test_seat_desk.py"
+REFERENCE = ROOT / "items" / ITEM / "reference" / "seat-desk.spec.ts"
 
 
 @pytest.fixture
@@ -119,7 +119,7 @@ def test_the_lesson_holds_the_only_h1(page: Page, server) -> None:
 def test_the_real_app_is_one_click_away(page: Page, server) -> None:
     page.goto(server.base_url + "/item/" + ITEM)
     address = page.locator("#app a").first.get_attribute("href")
-    expect(page.locator("#app")).to_contain_text("codegen --target python-pytest " + address)
+    expect(page.locator("#app")).to_contain_text("codegen --target playwright-test " + address)
 
     page.goto(address)
     expect(page.locator("#heading")).to_have_text("Dockside Seat Desk")

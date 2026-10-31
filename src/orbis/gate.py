@@ -30,7 +30,7 @@ class Item:
         self.reference = self._one_file(self.root / "reference")
 
     def _one_file(self, directory):
-        found = sorted(directory.glob("*.py"))
+        found = sorted(directory.glob("*.spec.ts"))
         if len(found) != 1:
             raise SystemExit(
                 f"{directory} should hold exactly one candidate, found {len(found)}"
@@ -38,7 +38,7 @@ class Item:
         return found[0]
 
     def candidates(self):
-        return sorted((self.root / "candidates").glob("*.py"))
+        return sorted((self.root / "candidates").glob("*.spec.ts"))
 
     def check(self):
         if not self.app.is_dir():
@@ -169,7 +169,7 @@ def command_attempt(args):
     # The traces are what explain a verdict, so they're kept, one directory
     # per environment. Only the latest attempt's are kept, which is the one
     # the page shows.
-    traces = pathlib.Path(args.attempts).parent / "traces" / name
+    traces = (pathlib.Path(args.attempts).parent / "traces" / name).resolve()
     shutil.rmtree(traces, ignore_errors=True)
     accepted, runs = run_gate(item, candidate, browsers_path(), False, traces)
 

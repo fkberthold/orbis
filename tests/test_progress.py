@@ -59,7 +59,7 @@ def test_the_index_shows_where_each_item_stands(page: Page, server, run_dir) -> 
 
 
 def test_the_attempt_command_records_the_gate_verdict(run_dir) -> None:
-    weak = ITEM_DIR / "candidates" / "weak_passes_everything.py"
+    weak = ITEM_DIR / "candidates" / "weak-passes-everything.spec.ts"
     log = run_dir / "attempts.jsonl"
 
     code = gate.main([

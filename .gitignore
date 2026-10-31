@@ -10,3 +10,9 @@ run/
 .beads-credential-key
 .beads/proxieddb/
 *.gate.lock*
+
+# The learner's node workspace. The lockfile is committed, the install isn't.
+learner/node_modules/
+learner/runs/
+learner/test-results/
+learner/playwright-report/

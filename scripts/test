@@ -66,13 +66,13 @@ for item in "${ITEMS[@]}"; do
     continue
   fi
 
-  refs=$(find "${item}/reference" -name '*.py' | wc -l)
+  refs=$(find "${item}/reference" -name '*.spec.ts' | wc -l)
   if [ "$refs" -ne 1 ]; then
     bad "${name}: reference/ holds ${refs} files, it must hold exactly one"
     continue
   fi
 
-  cands=$(find "${item}/candidates" -name '*.py' | wc -l)
+  cands=$(find "${item}/candidates" -name '*.spec.ts' | wc -l)
   if [ "$cands" -eq 0 ]; then
     bad "${name}: candidates/ is empty, so the gate can never be watched failing"
     continue
@@ -84,11 +84,9 @@ for item in "${ITEMS[@]}"; do
     continue
   fi
 
-  # Every .py has to parse before a browser is worth starting.
-  if ! uv run --quiet python -m compileall -q "${item}/reference" "${item}/candidates" >/dev/null 2>&1; then
-    bad "${name}: a reference or candidate does not parse"
-    continue
-  fi
+  # The TypeScript isn't parsed here. One candidate per item is broken on
+  # purpose, and Playwright is what loads the rest, so tier 2 is where a file
+  # that won't load shows up, as did-not-run.
 
   # Every patch has to still apply to the app as it stands now.
   rot=""
@@ -126,6 +124,15 @@ fi
 # ---------------------------------------------------------------------------
 echo
 echo "tier 2, the gate:"
+
+# The learner's specs run under node, from the workspace in learner/. Install
+# it from the lockfile the first time, so a fresh clone can gate.
+if [ ! -d learner/node_modules/@playwright/test ]; then
+  if ! PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci --prefix learner --no-audit --no-fund >/dev/null 2>&1; then
+    echo "test: npm ci --prefix learner failed, so no spec can run." >&2
+    exit 2
+  fi
+fi
 
 if [ -z "${PLAYWRIGHT_BROWSERS_PATH:-}" ]; then
   # Resolved rather than guessed: the browsers Playwright downloads for itself

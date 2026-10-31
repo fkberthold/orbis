@@ -6,17 +6,17 @@ without changing the interface a candidate writes against, which matters
 because the environment supplying the interface is the thing that makes this
 subject a workable first target.
 
-A candidate can also assert with a plain assert statement, which never reaches
-the trace. So the source gets a static look as well, and a candidate counts as
+A candidate can also assert on a plain value, expect(count).toBe(1), which runs
+in node and never reaches the trace. So the source gets a static look as well, and a candidate counts as
 having asserted something if either channel says so. That errs toward calling
 a run non-vacuous, which is the safe direction: the gate still rejects a
 candidate that asserts a constant, because such a candidate stays silent
 against every mutation.
 """
 
-import ast
 import json
 import pathlib
+import re
 import zipfile
 
 EXPECT_CALL = ("Frame", "expect")
@@ -55,9 +55,17 @@ def expect_calls_under(output_dir):
 
 
 def has_assert_statement(source_path):
-    """True when the candidate's own source contains an assert statement."""
+    """True when the candidate's own source calls expect anywhere.
+
+    A web-first assertion like expect(locator).toHaveText() reaches the trace.
+    A plain one like expect(count).toBe(1) runs in node and never does, so the
+    source is the only place it shows. Comments are stripped first, so an
+    expect that's only mentioned doesn't count.
+    """
     try:
-        tree = ast.parse(pathlib.Path(source_path).read_text())
-    except (OSError, SyntaxError):
+        text = pathlib.Path(source_path).read_text()
+    except OSError:
         return False
-    return any(isinstance(node, ast.Assert) for node in ast.walk(tree))
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
+    text = re.sub(r"//[^\n]*", "", text)
+    return re.search(r"\bexpect\s*[.(]", text) is not None
