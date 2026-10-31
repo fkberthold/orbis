@@ -5,9 +5,9 @@ import { test } from '@playwright/test';
 
 test('the booking goes through', async ({ page }) => {
   await page.goto('/');
-  await page.getByLabel('07:30 Harbor to Gull Isle').check();
+  await page.getByRole('radio', { name: '07:30 Harbor to Gull Isle' }).check();
   await page.getByRole('button', { name: 'Next' }).click();
-  await page.getByLabel('Lead passenger').fill('Ada');
+  await page.getByRole('textbox', { name: 'Lead passenger' }).fill('Ada');
   await page.getByRole('button', { name: 'Next' }).click();
   await page.getByRole('button', { name: 'Confirm' }).click();
 });

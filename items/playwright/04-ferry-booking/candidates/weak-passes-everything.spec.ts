@@ -5,11 +5,12 @@ import { test, expect } from '@playwright/test';
 
 test('a booking gets a reference', async ({ page }) => {
   await page.goto('/');
-  await page.getByLabel('07:30 Harbor to Gull Isle').check();
+  await page.getByRole('radio', { name: '07:30 Harbor to Gull Isle' }).check();
   await page.getByRole('button', { name: 'Next' }).click();
-  await page.getByLabel('Lead passenger').fill('Ada');
+  await page.getByRole('textbox', { name: 'Lead passenger' }).fill('Ada');
   await page.getByRole('button', { name: 'Next' }).click();
   await page.getByRole('button', { name: 'Confirm' }).click();
 
+  // A bare <p> with no role or name to reach it by.
   await expect(page.locator('#reference')).toContainText('FB-');
 });
