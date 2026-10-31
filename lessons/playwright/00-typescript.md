@@ -65,9 +65,11 @@ broken:
 The last row is the one to fear. `expect(rows).toHaveCount(0)` with no `await`,
 right after a click, passes the instant it looks, before the app has done
 anything. Nothing goes red to tell you. I think it's the most expensive one
-word you can leave out of a Playwright test. The middle row is the other quiet one. An
-assertion left running in the background is checking the page while your next
-lines change it, and I suspect what it ends up checking is mostly luck.
+word you can leave out of a Playwright test.
+
+The third row is the other quiet one. An assertion left running in the
+background is checking the page while your next lines change it, and I suspect
+what it ends up checking is mostly luck.
 
 ## The habit
 
