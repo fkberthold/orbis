@@ -135,3 +135,9 @@ pre {
   margin-top: 2rem;
   border-top: 1px solid var(--rule);
 }
+
+pre {
+  background: var(--code-bg);
+  padding: 0.6rem 0.8rem;
+  overflow-x: auto;
+}
