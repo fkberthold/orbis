@@ -161,10 +161,20 @@ through nix rather than hardcoding it, since a channel bump moves it.
     export PLAYWRIGHT_BROWSERS_PATH=<that path>
     export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
-**Versions line up by minor.** nixpkgs `playwright-driver` is 1.59.1 and its
-bundle carries chromium-1217. PyPI has no playwright 1.59.1, so the pin is
-`playwright==1.59.0` and it drives that bundle. Measured 2026-10-30, reported
-chromium 147.0.7727.15.
+**The learner writes TypeScript, and Orbis is Python.** Frank, 2026-10-31:
+"This should be using Typescript playwright, not python, and assume the person
+is not expert in Typescript." So references, candidates, task statements and
+lessons are TypeScript under `@playwright/test`, run from the node workspace in
+`learner/`. The runner, gate, page and Orbis's own tests stay Python (D2).
+
+**Versions line up exactly.** nixpkgs `playwright-driver` is 1.59.1 and its
+bundle carries chromium-1217. `learner/` pins `@playwright/test` 1.59.1, which
+drives that bundle. Measured 2026-10-31. Orbis's own tests still use the Python
+`playwright==1.59.0`, since PyPI has no 1.59.1.
+
+**A spec has to sit inside `learner/`** or its `import ... from
+'@playwright/test'` can't be resolved. The runner copies each candidate into
+`learner/runs/` beside a config it writes for that run.
 
 **Two things that bite and are not the linking problem.** `uv sync` will pick a
 CPython with no playwright wheel unless `requires-python` caps it, and the error

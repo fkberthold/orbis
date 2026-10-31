@@ -6,6 +6,10 @@ the learner saying so and without a human having written the answer.
 The name comes from Comenius's *Orbis Pictus*, the first textbook to pair text
 with pictures on purpose.
 
+The first subject is Playwright, and you write your tests in TypeScript with
+`@playwright/test`. The course assumes you aren't a TypeScript expert and opens
+with a lesson on just enough of it. Orbis itself is Python.
+
 ## The problem this is built around
 
 Most of a self-teaching system is bounded engineering. Researching a subject,
@@ -61,8 +65,11 @@ else matters if that is false. So it gets tested first, with one item, by hand.
       TASK.md          the statement a learner reads
       app/             the real target, a static page with JS
       mutations/       four patches, one broken rule each
-      reference/       the reference solution
-      candidates/      three solutions the gate has to reject
+      reference/       the reference solution, a .spec.ts
+      candidates/      four solutions the gate has to reject
+
+    learner/           the node workspace your TypeScript runs in
+      mine/            where your own .spec.ts files go
 
     src/orbis/
       verdict.py       the four cells
@@ -118,7 +125,7 @@ nothing to fill in.
 To grade your own tests, point the gate at your file:
 
 ```bash
-uv run python -m orbis.gate attempt items/playwright/01-seat-desk --candidate my_test.py
+uv run python -m orbis.gate attempt items/playwright/01-seat-desk --candidate learner/mine/01-seat-desk.spec.ts
 ```
 
 It runs your file against the real app and every broken copy, and appends
@@ -131,9 +138,9 @@ stored as a fact. Nothing turns it into a score.
 and you keep one per group. It lists the silent ones separately, since a silent
 patch is either outside the rules or a hole in the reference.
 
-## Measured, 2026-10-30
+## Measured, 2026-10-31
 
-Playwright 1.59.0 against the nixpkgs driver at 1.59.1, chromium revision 1217,
+`@playwright/test` 1.59.1 against the nixpkgs driver at 1.59.1, chromium revision 1217,
 reporting chromium 147.0.7727.15. The reference passes the real desk with 15
 assertions executed, and each mutation produces a different failure vector.
 
@@ -145,8 +152,8 @@ assertions executed, and each mutation produces a different failure vector.
 | m3-spinner-never-clears | catches | pass FAIL pass pass |
 | m4-reserved-seat-not-recorded | catches | pass pass FAIL pass |
 
-Vector order is `test_double_click_reserves_once`, `test_reserve_succeeds`,
-`test_reserved_seat_is_refused_next_time`, `test_taken_seat_is_rejected`.
+Vector order is the test titles sorted: double click reserves once, reserve
+succeeds, reserved seat is refused next time, taken seat is rejected.
 
 The fourth test and `m4` came from a generated mutation the original three
 tests were silent on (orb-eei.1). Rule 2 already covered it, so it was a hole in
@@ -168,7 +175,7 @@ pairs the reference cannot tell apart, which is a floor rather than a solution.
 exercise wearing a verdict. Generatable is not the same as worth generating.
 
 **A candidate that asserts a constant.** The vacuous cell counts assertions
-from the trace and looks for an assert statement in the source, so `assert True`
+from the trace and looks for `expect(` in the source, so `expect(true).toBe(true)`
 counts as having asserted. The gate still rejects such a candidate, because it
 stays silent against every mutation. Different cell, same outcome, and worth
 knowing which one did the work.

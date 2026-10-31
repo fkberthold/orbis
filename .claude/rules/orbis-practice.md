@@ -44,8 +44,9 @@ leave the reader a choice I am resolving silently?** The classes that recur:
   whose published verdict was unreachable because a run setting was unstated.
 
 **3. Write the reference solution.** Idiomatic for the subject. For Playwright
-that is pytest-playwright with the `page` fixture and a `--base-url`, so
-`page.goto("/")` reaches the app. **Do not invent an interface.** The whole
+that is `@playwright/test` in TypeScript, a `.spec.ts` with `test(...)` and
+the `page` fixture, so `await page.goto('/')` reaches the app. Every action and
+every web-first `expect` is awaited. **Do not invent an interface.** The whole
 reason Playwright is the easy corner is that the environment supplies the
 interface, and shimming it spends that advantage to measure it.
 
@@ -58,13 +59,16 @@ condition G3 and it is what stops two mutations teaching the same thing. Work
 out the intended per-test vector on paper before you run anything, then check
 the run against it.
 
-**5. Write the candidates the gate must REJECT.** At least these three, and the
+**5. Write the candidates the gate must REJECT.** At least these four, and the
 item is not done without them:
 
 - one that asserts nothing, which must read `vacuous` everywhere
 - one that passes the real app with a real assertion and catches nothing, which
   must read `silent` everywhere
 - one that cannot be collected, which must read `did-not-run` everywhere
+- one that drops the `await` from its assertions, which the gate must reject
+  however it gets there. On every item so far that's G1, because Playwright
+  fails an assertion still pending when the test ends.
 
 The second is the one that matters. A pass-or-fail instrument calls it correct.
 
@@ -90,13 +94,14 @@ executed, without touching the API the learner writes against.
 **There is no `apiName` field on this build**, which is the field the obvious
 first attempt reaches for. Measured 2026-10-30.
 
-**The known hole, and it is in the README rather than hidden.** A plain `assert`
-statement never reaches the trace, so `tracing.has_assert_statement` scans the
-source with `ast` as a second channel, and a candidate counts as asserting if
-either channel says so. That errs toward calling a run non-vacuous. So
-`assert True` reads as an assertion and the vacuous cell MISSES it. It is still
-rejected, by G2, because it stays silent against every mutation. Different cell,
-same outcome, and say which one did the work when you report.
+**The known hole, and it is in the README rather than hidden.** A plain-value
+assertion like `expect(count).toBe(1)` runs in node and never reaches the trace,
+so `tracing.has_assert_statement` scans the source for `expect(` as a second
+channel, and a candidate counts as asserting if either channel says so. That
+errs toward calling a run non-vacuous. So `expect(true).toBe(true)` reads as an
+assertion and the vacuous cell MISSES it. It is still rejected, by G2, because
+it stays silent against every mutation. Different cell, same outcome, and say
+which one did the work when you report.
 
 ---
 
@@ -113,9 +118,9 @@ playwright release rather than a missing wheel.
 **A `nix build` can die with "Nix daemon disconnected unexpectedly"** while
 `curl` to the same host returns 200. Retry once before believing it.
 
-**A double click needs `force=True` on a button the app disables**, since
+**A double click needs `{ force: true }` on a button the app disables**, since
 Playwright waits for actionability and would otherwise time out. `page.dblclick`
-with `force=True` fires two clicks tightly enough that the app's in-flight lock
+with `{ force: true }` fires two clicks tightly enough that the app's in-flight lock
 is what decides the outcome, which is the behavior under test.
 
 **A race in the app must be made deterministic or the test flakes.** In
