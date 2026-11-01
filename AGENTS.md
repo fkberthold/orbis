@@ -114,6 +114,20 @@ tla-puzzles, and Orbis writes what goes around each chapter: a guide to what
 the learner needs first, a cheat sheet, exercises and drills. Orbis writes its
 own lessons only for a subject, or a stretch of one, that nothing good covers.
 
+**Write for the learner Frank is, not a beginner.** Frank, 2026-11-01: "I have
+20 years of experience as an SDET and a CS degree... I know several test
+automation systems for api and front end automation. So what should be leaned
+in on is what makes this system different, not the basics of how to do
+automation." So a guide skips what any automation engineer already knows (what
+a locator is, why sleeps are bad, arrange-act-assert) and spends its words on
+what Playwright does differently, set against the tools he already knows. He
+still isn't a TypeScript expert, so the language gets explained, and pitched at
+someone who knows other typed languages. Expertise reversal points the same
+way for exercises: completion problems help novices and measure as harmful at
+high prior knowledge, so lean on write-from-prompt and predict-then-check. It
+doesn't license choppier prose, since skilled readers measured better with
+high cohesion.
+
 ## THE GATE DISCIPLINE, and it is not negotiable
 
 **Watch the gate fail before believing it.** Every item ships candidates whose
