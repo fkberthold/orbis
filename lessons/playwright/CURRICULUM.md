@@ -5,7 +5,7 @@ TypeScript tests for a real app at work. That decides what counts as
 fundamental. Config, fixtures, page objects, sign-in reuse, API calls in tests,
 flaky-test diagnosis and CI all have to be in the course, not left as extras.
 
-**The learner** has twenty years of QA and isn't a TypeScript expert. The
+**The learner** has twenty years as an SDET and a CS degree, knows Robot Framework, Selenium, Python, Postman and pytest, and isn't a TypeScript expert. So the guides spend their words on what Playwright does differently from those. The
 research on expertise reversal says to guide heavily where he's new (TypeScript,
 the Playwright API) and lightly where he isn't (what a test should prove).
 
@@ -44,7 +44,7 @@ TypeScript is new, and give way to blank files as the steps go on.
 
 | step | read | Orbis writes | practice |
 |---|---|---|---|
-| 0 | | **Just enough TypeScript** (exists) | predict, then check: which missing `await` passes quietly |
+| 0 | | **The TypeScript you need, read against Python** (exists) | predict, then check: which missing `await` passes quietly |
 | 1 | intro | guide | none graded. Install, run the example, open the report |
 | 2 | writing-tests | guide, with a note on `{ page }` ahead of fixtures | **item 01, seat desk** (exists) |
 | 3 | locators, dialogs | guide: role first, then filtering a list | **item 05, repair queue** (exists, moved up) |
@@ -71,7 +71,7 @@ the first thing to get right.
 
 ## What Orbis has to write
 
-- **Lesson 0, just enough TypeScript.** It exists, and it gains classes,
+- **Lesson 0, the TypeScript you need.** It exists, and it gains classes,
   `type` and generics only as far as steps 8 and 9 need them.
 - **A guide per step,** short, pointing at the docs rather than repeating them.
 - **Diagnosing a flaky test** (step 13). I think this is where twenty years of

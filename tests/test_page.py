@@ -103,7 +103,7 @@ def test_an_item_without_a_lesson_has_no_lesson_section(page: Page, server) -> N
 def test_lesson_one_is_the_second_step(page: Page, server) -> None:
     page.goto(server.base_url + "/")
     second = page.locator("#course li").nth(1)
-    expect(second).to_contain_text("A first Playwright test")
+    expect(second).to_contain_text("What Playwright does that Selenium")
     expect(second.locator("a")).to_have_attribute("href", "/item/" + ITEM)
     expect(page.locator("#waiting a[href='/item/playwright/04-ferry-booking']")).to_have_count(1)
 
@@ -112,7 +112,7 @@ def test_the_lesson_holds_the_only_h1(page: Page, server) -> None:
     page.goto(server.base_url + "/item/" + ITEM)
     expect(page.locator("h1")).to_have_count(1)
     expect(page.locator("#lesson h1")).to_have_text(
-        "A first Playwright test, and what makes it worth anything"
+        "What Playwright does that Selenium leaves to you"
     )
 
 
@@ -129,7 +129,7 @@ def test_the_real_app_is_one_click_away(page: Page, server) -> None:
 def test_a_lesson_with_no_item_is_still_a_step(page: Page, server) -> None:
     page.goto(server.base_url + "/")
     first = page.locator("#course li").first
-    expect(first).to_contain_text("Just enough TypeScript")
+    expect(first).to_contain_text("The TypeScript you need")
     first.locator("a").click()
-    expect(page.locator("#lesson h1")).to_have_text("Just enough TypeScript to read a Playwright test")
+    expect(page.locator("#lesson h1")).to_have_text("The TypeScript you need, read against Python")
     expect(page.locator("#app")).to_have_count(0)

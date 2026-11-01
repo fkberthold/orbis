@@ -1,8 +1,8 @@
-# Just enough TypeScript to read a Playwright test
+# The TypeScript you need, read against Python
 
-You don't need much TypeScript for this course. You need to read one shape of
-file, and you need to understand one idea, `await`, well enough to never leave
-it out. Here's the shape.
+Most of a Playwright test reads like Python with braces. One thing doesn't, and
+it's the reason this lesson exists: a TypeScript promise starts running the
+moment you create it, and a Python coroutine doesn't.
 
 ```ts
 import { test, expect } from '@playwright/test';
@@ -15,66 +15,57 @@ test('a tool can be checked out', async ({ page }) => {
 });
 ```
 
-## Reading it line by line
+## The syntax, by its Python equivalent
 
-| piece | what it means |
-|---|---|
-| `import { test, expect } from '@playwright/test';` | Take two things, `test` and `expect`, from the Playwright library. The braces name the things you want. |
-| `test('a tool can be checked out', ...)` | Declare a test. The first argument is its title, the second is the test itself. |
-| `async ({ page }) => { ... }` | The test is a function. `=>` is how TypeScript writes a short function. `async` says it waits on things, and more on that below. |
-| `({ page })` | Playwright hands the function a bundle of ready-made helpers. The braces pull out the one called `page`, a fresh browser tab. |
-| `page.getByLabel('Borrower').fill('Sam')` | Find the field labeled Borrower, then fill it. Each dot does the next thing to whatever the last step gave back. |
-| `{ name: 'Check out' }` | An object, a bundle of named values in braces. Here it says which button you mean. |
-| `'Borrower'` | A string. Single and double quotes mean the same thing. |
-| `;` | Ends a statement. TypeScript usually works without them, and the course uses them anyway. |
+| TypeScript | closest Python | the difference |
+|---|---|---|
+| `import { test, expect } from '@playwright/test';` | `from playwright.sync_api import Page, expect` | none worth knowing |
+| `test('title', async ({ page }) => { ... })` | `def test_title(page):` with a pytest fixture | the test is an argument to `test()`, not a named function the runner finds |
+| `({ page })` | asking for the `page` fixture by parameter name | it's destructuring, pulling `page` out of one object of fixtures |
+| `{ name: 'Check out' }` | `name="Check out"` | an object literal, which is how TypeScript passes options |
+| `const x = 3;` and `let y = 3;` | `x = 3` | `const` can't be reassigned, `let` can. Use `const` unless you can't |
+| `(page: Page)` | `(page: Page)` | the same idea, a hint the runtime ignores |
+| `===` | `==` | plain `==` coerces types, so it's never the one you want |
+| `route => route.fulfill(...)` | `lambda route: route.fulfill(...)` | an arrow function can also take a `{ }` body of many lines |
 
-Two more you'll see. `const total = 3;` names a value that won't change, and
-`let` names one that will. And a helper reads like this:
+The type hints behave as Python's do at runtime. Playwright strips them
+before it runs a test and doesn't check them, so a wrong type won't stop a run.
+A misspelled method like `page.clik` will, but only when that line runs. Your
+editor checks the types as you write, and that's the only place they're
+checked.
 
-```ts
-async function openDesk(page: Page) {
-  await page.goto('/');
-}
-```
+## Promises start now, coroutines start when awaited
 
-The `: Page` is a type. It tells you, and your editor, that `page` is a
-Playwright page. Playwright strips types out before it runs your test and
-doesn't check them, so a type mistake won't stop a run. A misspelled method
-like `page.clik` will, but only when that line runs.
+In Python, calling an `async def` builds a coroutine and runs none of it. Leave
+off the `await` and the work never happens, and Python warns that a coroutine
+was never awaited. Selenium's Python bindings, and Playwright's own sync API
+for Python, block on every call, so the question never comes up.
 
-## The one idea: `await`
+TypeScript has no sync Playwright API, and its promises are eager. Calling
+`locator.click()` sends the click to the browser right away and hands back a
+promise for the result. `await` decides only whether your test waits for that
+result. So a missing `await` doesn't skip the step, as it would in Python. It
+detaches the step, and the test carries on while it's still running.
 
-The browser runs in a separate process. When your test says
-`page.getByRole('button', { name: 'Check out' }).click()`, it sends the click off and gets back a promise, a
-ticket for a result that isn't ready yet. `await` means "stop here until the
-ticket comes back." Without it, the test moves straight on to the next line
-while the click is still on its way.
-
-So every Playwright call in a test gets `await` in front of it. Every `goto`,
-every `fill`, every `click`, and every `expect` on a locator.
-
-What a missing `await` does depends on where it's missing. These were measured
-on the practice apps, each against the real app and a copy with one thing
-broken:
+What that does to a test depends on what's left running. These were measured on
+the practice apps, each against the real app and a copy with one thing broken.
 
 | `await` missing on | what happened |
 |---|---|
 | a click or a fill | It worked anyway, because Playwright sends commands in the order you start them. That's luck, and you can't build on it. |
-| an `expect` on the test's last line, that the page hasn't met yet | The test failed even against the working app. Playwright fails an assertion that's still waiting when the test ends. |
+| an `expect` on the test's last line, that the page hasn't met yet | The test failed even against the working app. Playwright fails an assertion that's still pending when the test ends. |
 | an `expect` in the middle of a test | It kept checking in the background while the next lines ran. On the booking app it happened to pass and to catch its broken copy. |
 | an `expect` that's already true when it runs | The test passed against the working app **and** the broken one. It checked nothing. |
 
 The last row is the one to fear. `expect(rows).toHaveCount(0)` with no `await`,
 right after a click, passes the instant it looks, before the app has done
-anything. Nothing goes red to tell you. I think it's the most expensive one
-word you can leave out of a Playwright test.
+anything. Nothing goes red. I think it's the most expensive single word you can
+leave out of a Playwright test.
 
-The third row is the other quiet one. An assertion left running in the
-background is checking the page while your next lines change it, and I suspect
-what it ends up checking is mostly luck.
+The third row is the other quiet one. An assertion running in the background is
+checking the page while your next lines change it, and I suspect what it ends
+up checking is mostly luck.
 
-## The habit
-
-Type `await` before every line that talks to the page, and read your test back
-looking for a line that doesn't have one. The only lines that don't need it are
-the ones that don't touch the page at all, like `const total = 3;`.
+A lint rule, `@typescript-eslint/no-floating-promises`, flags every one of
+these by machine. It isn't set up in `learner/` yet, so for now the check is
+reading your test back for a page call with no `await` in front of it.
