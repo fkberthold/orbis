@@ -4,18 +4,108 @@ Coming from Selenium and pytest, most of a Playwright test will look familiar.
 The differences sit in four places: what a locator is, what an action waits
 for, what an assertion does, and what each test starts with. Each one removes a
 chore you'd write by hand in Selenium, and each one has an edge of its own.
+First, though, here's how the files of a suite fit together.
+
+## How a suite is put together
+
+A small suite for a tool-lending app looks like this. `npm init playwright@latest`
+scaffolds the same shape.
+
+```text
+tool-library-tests/
+├── package.json            pins @playwright/test, as requirements.txt would
+├── playwright.config.ts    the runner's settings, the role pytest.ini plays
+└── tests/
+    ├── helpers.ts          plain functions the specs import
+    ├── checkout.spec.ts
+    └── returns.spec.ts
+```
+
+`package.json` holds the one dependency. `npm ci` installs it from the lockfile
+beside it, much as `pip install -r` would.
+
+```json
+{ "private": true, "devDependencies": { "@playwright/test": "1.59.1" } }
+```
+
+The config tells the runner where the tests are and what every test gets. Step 7
+covers it properly. For now, the parts that matter are `testDir` and `use`.
 
 ```ts
-import { test, expect } from '@playwright/test';
+// playwright.config.ts
+import { defineConfig, devices } from '@playwright/test';
 
-test('a tool can be checked out', async ({ page }) => {
-  await page.goto('/');
-  await page.getByLabel('Borrower').fill('Sam');
-  await page.getByLabel('Tool').selectOption('torque wrench');
-  await page.getByRole('button', { name: 'Check out' }).click();
-  await expect(page.getByRole('listitem')).toHaveCount(1);
+export default defineConfig({
+  testDir: './tests',
+  use: {
+    baseURL: 'http://localhost:3000', // so page.goto('/') lands here
+    trace: 'retain-on-failure',
+  },
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+  ],
 });
 ```
+
+A helper is an ordinary module. The `export` is what makes `checkOut` visible
+to other files, since TypeScript, unlike Python, keeps a module's names private
+unless you export them.
+
+```ts
+// tests/helpers.ts
+import { Page } from '@playwright/test';
+
+export async function checkOut(page: Page, borrower: string, tool: string) {
+  await page.getByLabel('Borrower').fill(borrower);
+  await page.getByLabel('Tool').selectOption(tool);
+  await page.getByRole('button', { name: 'Check out' }).click();
+}
+```
+
+A spec file groups its tests with `test.describe`, the way a pytest class
+would, and runs shared setup in `test.beforeEach`.
+
+```ts
+// tests/checkout.spec.ts
+import { test, expect } from '@playwright/test';
+import { checkOut } from './helpers';
+
+test.describe('checkout', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+  });
+
+  test('a tool can be checked out', async ({ page }) => {
+    await checkOut(page, 'Sam', 'torque wrench');
+    await expect(page.getByRole('listitem')).toHaveCount(1);
+  });
+
+  test('a tool on loan is refused', async ({ page }) => {
+    await checkOut(page, 'Sam', 'torque wrench');
+    await checkOut(page, 'Ada', 'torque wrench');
+    await expect(page.getByRole('alert')).toHaveText('That tool is on loan.');
+    await expect(page.getByRole('listitem')).toHaveCount(1);
+  });
+});
+```
+
+`npx playwright test` finds every `*.spec.ts` under `testDir`, the way pytest
+finds `test_*.py`. Files run in parallel, each in a worker process of its own,
+and the tests inside one file run in order in that file's worker. Each test
+still gets a fresh page, so running in order doesn't mean sharing state.
+
+| in pytest | in Playwright Test |
+|---|---|
+| `test_*.py` | `*.spec.ts` |
+| a test class | `test.describe('...', () => { ... })` |
+| `setup_method`, or an autouse fixture | `test.beforeEach(async ({ page }) => { ... })` |
+| a fixture in `conftest.py` | a fixture made with `test.extend`, in step 8 |
+| `@pytest.mark.parametrize` | a plain `for` loop around `test(...)` |
+| `pytest.ini` | `playwright.config.ts` |
+
+In this course, `learner/` is a suite of exactly this shape. It has a
+`package.json`, a `playwright.config.ts` that reads the app's address from
+`BASE_URL`, and `learner/mine/` for your spec files.
 
 If you've used Robot Framework's Browser library, you've already used
 Playwright underneath, since that library is built on it. SeleniumLibrary is
