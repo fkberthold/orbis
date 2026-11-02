@@ -128,6 +128,33 @@ high prior knowledge, so lean on write-from-prompt and predict-then-check. It
 doesn't license choppier prose, since skilled readers measured better with
 high cohesion.
 
+**A lesson shows the whole thing the learner will make, before its parts.**
+Frank, 2026-11-01, on lesson 01: "the thing that is missing is anything that
+actually looks like an example of how a file, or set of files ... is actually
+put together, it has one snippet and that's it." The lesson explained
+Playwright as a list of features, each with a fragment, and never showed a
+suite. The learner's first question is what they're making and what it looks
+like done, and a fragment can't answer it. An expert needs this more, not
+less, since they learn by mapping a new whole onto one they already know.
+
+So every lesson carries at least one complete, working example of the artifact
+its practice asks for, at the scale the learner works at and in its real
+setting: where the files live, what surrounds them, and the command that runs
+them. Fragments come after, pointing into that whole. The test before a lesson
+ships is whether the learner could make the practice artifact from the lesson
+and the docs alone. Drills follow the same rule. A drill names where its file
+goes and how it runs, and its reveal is the whole solution, not the changed
+lines.
+
+This is the item-first mistake again at a smaller scale. Both times the
+builder wrote what was interesting to build, the differences and the traps,
+and skipped what the learner needed first.
+
+**A lesson's examples are run, not just read.** A complete example can be
+extracted and executed, so it should be, the same way the gate runs a
+reference. Lesson 01's suite was checked that way by hand (2 passed) before
+it shipped.
+
 ## THE GATE DISCIPLINE, and it is not negotiable
 
 **Watch the gate fail before believing it.** Every item ships candidates whose
