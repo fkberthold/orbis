@@ -79,8 +79,9 @@ else matters if that is false. So it gets tested first, with one item, by hand.
       subject.py       read a subject's subject.toml
       verdict.py       the four cells
       environment.py   copy the app, apply a patch, serve it
-      tracing.py       count the assertions a run actually executed
-      runner.py        one candidate against one environment
+      runners/         what each subject's tooling needs, behind one registry
+        playwright.py        one spec against one environment, and the page's commands
+        playwright_trace.py  count the assertions a run actually executed
       gate.py          the three conditions, a selfcheck, and a filter
       page.py          the task and its worked answer, one line at a time
       progress.py      the reveals and attempts logs

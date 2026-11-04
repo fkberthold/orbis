@@ -8,13 +8,11 @@ vectors is what catches that.
 """
 
 import argparse
-import os
 import pathlib
 import shutil
-import subprocess
 import sys
 
-from . import progress, runner, subject, verdict
+from . import progress, runners, subject, verdict
 
 GATE_PASS = "OK"
 GATE_FAIL = "FAIL"
@@ -24,19 +22,21 @@ class Item:
     """One authored item: a real app, its mutations, and its reference.
 
     It lives at subjects/<subject>/items/<item>, so the subject it belongs to,
-    and the workspace its candidates run in, are two levels up.
+    and the workspace its candidates run in, are two levels up. The subject
+    names the runner, which is what knows what a candidate file looks like.
     """
 
     def __init__(self, root):
         self.root = pathlib.Path(root).resolve()
         self.subject = subject.of_item(self.root)
         self.name = f"{self.subject.name}/{self.root.name}"
+        self.runner = runners.get(self.subject.runner)
         self.app = self.root / "app"
         self.mutations = sorted((self.root / "mutations").glob("*.patch"))
         self.reference = self._one_file(self.root / "reference")
 
     def _one_file(self, directory):
-        found = sorted(directory.glob("*.spec.ts"))
+        found = self.runner.sources(directory)
         if len(found) != 1:
             raise SystemExit(
                 f"{directory} should hold exactly one candidate, found {len(found)}"
@@ -44,7 +44,7 @@ class Item:
         return found[0]
 
     def candidates(self):
-        return sorted((self.root / "candidates").glob("*.spec.ts"))
+        return self.runner.sources(self.root / "candidates")
 
     def check(self):
         if not self.app.is_dir():
@@ -53,29 +53,7 @@ class Item:
             raise SystemExit(f"no mutations under {self.root / 'mutations'}")
 
 
-def browsers_path():
-    """Where Playwright's browsers live, which on NixOS is a store path.
-
-    The binaries Playwright downloads for itself are not linked for NixOS, so
-    the ones nixpkgs builds are the only ones that run here.
-    """
-    from_env = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
-    if from_env:
-        return from_env
-    built = subprocess.run(
-        ["nix", "build", "--no-link", "--print-out-paths",
-         "nixpkgs#playwright-driver.browsers"],
-        capture_output=True, text=True, check=False,
-    )
-    if built.returncode != 0:
-        raise SystemExit(
-            "PLAYWRIGHT_BROWSERS_PATH is unset and nix could not build the "
-            "browsers. Run: source env.sh"
-        )
-    return built.stdout.strip().splitlines()[-1]
-
-
-def grade(item, candidate, browsers, keep=None):
+def grade(item, candidate, prepared, keep=None):
     """Run one candidate across every environment and return the runs.
 
     With keep, each environment's run directory stays under keep/<name>, which
@@ -84,14 +62,15 @@ def grade(item, candidate, browsers, keep=None):
     def kept(name):
         return keep / name if keep else None
 
+    workspace = item.subject.workspace
     runs = [
-        runner.run(candidate, item.app, None, runner.REAL, browsers,
-                   item.subject.workspace, keep_dir=kept(runner.REAL))
+        item.runner.run(candidate, item.app, None, runners.REAL, workspace,
+                        prepared, keep_dir=kept(runners.REAL))
     ]
     for patch in item.mutations:
         runs.append(
-            runner.run(candidate, item.app, patch, patch.stem, browsers,
-                       item.subject.workspace, keep_dir=kept(patch.stem))
+            item.runner.run(candidate, item.app, patch, patch.stem, workspace,
+                            prepared, keep_dir=kept(patch.stem))
         )
     return runs
 
@@ -134,8 +113,8 @@ def conditions(runs, check_vectors):
     return results
 
 
-def run_gate(item, candidate, browsers, check_vectors, keep=None):
-    runs = grade(item, candidate, browsers, keep)
+def run_gate(item, candidate, prepared, check_vectors, keep=None):
+    runs = grade(item, candidate, prepared, keep)
     report(item, candidate, runs)
     results = conditions(runs, check_vectors)
     for label, ok in results:
@@ -153,7 +132,7 @@ def command_gate(args):
         else item.reference
     )
     is_reference = candidate == item.reference
-    accepted, _ = run_gate(item, candidate, browsers_path(), is_reference)
+    accepted, _ = run_gate(item, candidate, item.runner.prepare(), is_reference)
     print(f"GATE {GATE_PASS if accepted else GATE_FAIL}")
     return 0 if accepted else 1
 
@@ -177,13 +156,13 @@ def command_attempt(args):
     # the page shows.
     traces = (pathlib.Path(args.attempts).parent / "traces" / name).resolve()
     shutil.rmtree(traces, ignore_errors=True)
-    accepted, runs = run_gate(item, candidate, browsers_path(), False, traces)
+    accepted, runs = run_gate(item, candidate, item.runner.prepare(), False, traces)
 
     cells = [
         {
             "environment": run.environment,
             "cell": run.cell,
-            "traces": [str(t) for t in sorted((traces / run.environment).rglob("trace.zip"))],
+            "traces": [str(t) for t in item.runner.kept_traces(traces / run.environment)],
         }
         for run in runs
     ]
@@ -200,7 +179,7 @@ def command_selfcheck(args):
     """
     item = Item(args.item)
     item.check()
-    browsers = browsers_path()
+    prepared = item.runner.prepare()
 
     expectations = [(item.reference, True)]
     expectations += [(candidate, False) for candidate in item.candidates()]
@@ -210,7 +189,7 @@ def command_selfcheck(args):
     failures = []
     for candidate, should_accept in expectations:
         accepted, _ = run_gate(
-            item, candidate, browsers, candidate == item.reference
+            item, candidate, prepared, candidate == item.reference
         )
         verdict_word = "accepted" if accepted else "rejected"
         wanted = "accepted" if should_accept else "rejected"
@@ -250,7 +229,7 @@ def command_filter(args):
         item.mutations = sorted(mutations.glob("*.patch"))
     item.check()
 
-    runs = grade(item, item.reference, browsers_path())
+    runs = grade(item, item.reference, item.runner.prepare())
     report(item, item.reference, runs)
     real, mutants = runs[0], runs[1:]
     if real.cell != verdict.SILENT:

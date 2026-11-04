@@ -104,7 +104,7 @@ first attempt reaches for. Measured 2026-10-30.
 
 **The known hole, and it is in the README rather than hidden.** A plain-value
 assertion like `expect(count).toBe(1)` runs in node and never reaches the trace,
-so `tracing.has_assert_statement` scans the source for `expect(` as a second
+so `runners/playwright_trace.has_assert_statement` scans the source for `expect(` as a second
 channel, and a candidate counts as asserting if either channel says so. That
 errs toward calling a run non-vacuous. So `expect(true).toBe(true)` reads as an
 assertion and the vacuous cell MISSES it. It is still rejected, by G2, because

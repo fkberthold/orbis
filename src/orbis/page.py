@@ -16,12 +16,11 @@ import html
 import http.server
 import json
 import pathlib
-import re
 import threading
 
 from markdown_it import MarkdownIt
 
-from . import progress, subject
+from . import progress, runners, subject
 from .environment import Site
 
 WEB = pathlib.Path(__file__).resolve().parent / "web"
@@ -46,59 +45,25 @@ def find_steps(subjects):
     }
 
 
+def runner_of(item):
+    """The runner the item's subject names, which knows its file types."""
+    return runners.get(subject.of_item(item).runner)
+
+
 def reference_of(item):
-    return min((item / "reference").glob("*.spec.ts"))
+    return min(runner_of(item).sources(item / "reference"))
 
 
-def _words(name):
-    """'reserveSucceeds' or 'reserve_succeeds' as 'reserve succeeds'."""
-    name = re.sub(r"(?<=[a-z0-9])([A-Z])", r" \1", name)
-    return name.replace("_", " ").strip().lower()
-
-
-def margin_for(text):
-    """Say roughly what kind of line this is, without saying what it does."""
-    line = text.strip()
-    test = re.match(r"test(?:\.\w+)?\(\s*['\"`](.+?)['\"`]", line)
-    if test:
-        return "a test: " + test.group(1)
-    helper = re.match(r"(?:export\s+)?(?:async\s+)?function\s+(\w+)", line)
-    if helper:
-        return "a helper: " + _words(helper.group(1))
-    if line.startswith("import "):
-        return "imports"
-    if line.startswith(("//", "/*", "*")):
-        return "a note on why"
-    line = line.removeprefix("await ")
-    if line.startswith("expect("):
-        return "check the result"
-    for call, note in (
-        ("page.goto", "open the page"),
-        ("page.fill", "fill a field"),
-        ("page.selectOption", "pick an option"),
-        ("page.dblclick", "double click"),
-        ("page.click", "click"),
-        ("page.route", "stub the network"),
-        ("page.once", "handle a dialog"),
-        ("page.on", "handle an event"),
-        ("page.goBack", "go back"),
-        ("page.waitFor", "wait"),
-    ):
-        if line.startswith(call):
-            return note
-    if re.match(r"\w+\(page", line):
-        return "use the helper"
-    return ""
-
-
-def worked_lines(reference):
-    """Every line of the reference as (number, text, margin).
+def worked_lines(item):
+    """Every line of the item's reference as (number, text, margin).
 
     Blank lines keep their place so the shape of the file survives, and they
-    have nothing to reveal.
+    have nothing to reveal. The margin comes from the runner, since what kind
+    of line a line is depends on the language it's in.
     """
+    margin_for = runner_of(item).margin_for
     lines = []
-    for number, text in enumerate(reference.read_text().splitlines(), 1):
+    for number, text in enumerate(reference_of(item).read_text().splitlines(), 1):
         lines.append((number, text, margin_for(text) if text.strip() else ""))
     return lines
 
@@ -219,10 +184,6 @@ def render_lesson_page(name, path):
     return _shell(_first_heading(path, name), body)
 
 
-def _spec_name(name):
-    return f"mine/{name.rsplit('/', 1)[-1]}.spec.ts"
-
-
 def _from_root(path):
     """A path as typed from the repo root, or as it is when it lies elsewhere."""
     path = pathlib.Path(path)
@@ -239,31 +200,32 @@ def render_app(name, item, url):
     the real app is served here. The broken copies never get a URL, since
     exploring them first would mean testing the breaks instead of the rules.
     """
+    runner = runner_of(item)
+    mine = runner.mine_name(name)
+    rows = "\n".join(
+        f"<tr><td>{html.escape(what)}</td><td><code>{html.escape(command)}</code></td></tr>"
+        for what, command in runner.app_commands(url, mine)
+    )
     url = html.escape(url)
-    spec = html.escape(_spec_name(name))
+    spec = html.escape(mine)
     workspace = html.escape(_from_root(subject.of_item(item).workspace))
-    run = f"BASE_URL={url} npx playwright test {spec}"
     return (
         "<section id=\"app\">\n<h2>The app</h2>\n"
         f"<p>The real app is running at <a href=\"{url}\" target=\"_blank\">{url}</a>."
         " Poke at it, watch what changes and when, and write your tests against it.</p>\n"
         f"<p class=\"hint\">Write your tests in <code>{workspace}/{spec}</code>. In a shell,"
         f" after <code>source env.sh</code> and <code>cd {workspace}</code>:</p>\n"
-        "<table>\n"
-        f"<tr><td>record clicks as test code, and pick up selectors</td><td><code>npx playwright codegen --target playwright-test {url}</code></td></tr>\n"
-        f"<tr><td>run your tests step by step, with the page beside them</td><td><code>{run} --ui</code></td></tr>\n"
-        f"<tr><td>watch your tests run in a browser</td><td><code>{run} --headed</code></td></tr>\n"
-        f"<tr><td>pause on each action with the inspector</td><td><code>{run} --debug</code></td></tr>\n"
-        "</table>\n</section>"
+        f"<table>\n{rows}\n</table>\n</section>"
     )
 
 
 def render_attempt(name, item, last):
     """The gate's verdict on the learner's latest file, cell by cell."""
+    runner = runner_of(item)
     workspace = _from_root(subject.of_item(item).workspace)
     command = (
         f"uv run python -m orbis.gate attempt {html.escape(_from_root(item))}"
-        f" --candidate {html.escape(workspace)}/{html.escape(_spec_name(name))}"
+        f" --candidate {html.escape(workspace)}/{html.escape(runner.mine_name(name))}"
     )
     if last is None:
         return (
@@ -274,7 +236,7 @@ def render_attempt(name, item, last):
     rows = "\n".join(
         f"<tr><td>{html.escape(c['environment'])}</td><td>{html.escape(c['cell'])}</td>"
         + "<td>" + "<br>".join(
-            f"<code>npx playwright show-trace {html.escape(t)}</code>"
+            f"<code>{html.escape(runner.trace_command(t))}</code>"
             for t in c.get("traces", [])
         ) + "</td></tr>"
         for c in last["cells"]
@@ -317,7 +279,7 @@ def render_item(name, item, revealed, last=None, app_url=None):
     if guide_of(item):
         task = "<p class=\"step\">Practice</p>\n" + _demote(task)
     rows = []
-    for number, text, margin in worked_lines(reference_of(item)):
+    for number, text, margin in worked_lines(item):
         if not text.strip():
             rows.append("<li class=\"blank\"></li>")
             continue
@@ -393,7 +355,7 @@ def _handler(subjects, items, log, attempts, apps, steps):
                 return self._send(400, "text/plain", "send an item and a line")
             if name not in items:
                 return self._send(404, "text/plain", "no such item")
-            lines = {n: text for n, text, _ in worked_lines(reference_of(items[name]))}
+            lines = {n: text for n, text, _ in worked_lines(items[name])}
             if not lines.get(number, "").strip():
                 return self._send(404, "text/plain", "no such line")
             # Written before the reply goes out, so the line is never on

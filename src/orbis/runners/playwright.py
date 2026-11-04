@@ -1,4 +1,10 @@
-"""Run one candidate against one environment and say which cell it landed in.
+"""The Playwright runner: a .spec.ts against one environment, and its cell.
+
+Everything here is about Playwright and its node workspace: staging a spec
+where `@playwright/test` resolves, the config each run gets, the npx call, the
+junit report, the trace the vacuous cell is read from, the browsers nixpkgs
+builds, and the commands the page shows beside the app. The gate and the page
+reach all of it through the runner registry.
 
 The question is never whether the candidate passes. A passing test proves
 nothing, because a test that asserts a constant passes. The question is whether
@@ -8,7 +14,6 @@ break.
 """
 
 import contextlib
-import dataclasses
 import json
 import os
 import pathlib
@@ -18,35 +23,40 @@ import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
 
-from . import tracing, verdict
-from .environment import MutationError, Site, materialize
+from .. import verdict
+from ..environment import MutationError, Site, materialize
+from . import Run, TestOutcome
+from . import playwright_trace as tracing
 
-REAL = "real"
 RUN_TIMEOUT_S = 300
+SOURCE_GLOB = "*.spec.ts"
 
 
-@dataclasses.dataclass
-class TestOutcome:
-    name: str
-    outcome: str
-    message: str = ""
+def sources(directory):
+    """The spec files in a directory, sorted, which is how candidates are found."""
+    return sorted(pathlib.Path(directory).glob(SOURCE_GLOB))
 
 
-@dataclasses.dataclass
-class Run:
-    environment: str
-    cell: str
-    tests: list
-    expects: int
-    note: str = ""
+def prepare():
+    """Where Playwright's browsers live, which on NixOS is a store path.
 
-    @property
-    def vector(self):
-        return tuple(test.outcome for test in self.tests)
-
-    @property
-    def vector_text(self):
-        return " ".join(self.vector) if self.tests else "(none)"
+    The binaries Playwright downloads for itself are not linked for NixOS, so
+    the ones nixpkgs builds are the only ones that run here.
+    """
+    from_env = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+    if from_env:
+        return from_env
+    built = subprocess.run(
+        ["nix", "build", "--no-link", "--print-out-paths",
+         "nixpkgs#playwright-driver.browsers"],
+        capture_output=True, text=True, check=False,
+    )
+    if built.returncode != 0:
+        raise SystemExit(
+            "PLAYWRIGHT_BROWSERS_PATH is unset and nix could not build the "
+            "browsers. Run: source env.sh"
+        )
+    return built.stdout.strip().splitlines()[-1]
 
 
 def _short_name(raw):
@@ -148,9 +158,12 @@ def _runs_dir(workspace):
     return runs
 
 
-def run(candidate, app_dir, patch, environment_name, browsers_path, workspace,
+def run(candidate, app_dir, patch, environment_name, workspace, prepared,
         keep_dir=None, timeout=RUN_TIMEOUT_S):
-    """Execute candidate against one environment and return a Run."""
+    """Execute candidate against one environment and return a Run.
+
+    prepared is what prepare() returned, the browsers path.
+    """
     candidate = pathlib.Path(candidate).resolve()
     work = pathlib.Path(
         keep_dir if keep_dir else tempfile.mkdtemp(prefix="orbis-run-")
@@ -167,7 +180,7 @@ def run(candidate, app_dir, patch, environment_name, browsers_path, workspace,
             return Run(environment_name, verdict.DID_NOT_RUN, [], 0, str(problem))
 
         environment = dict(os.environ)
-        environment["PLAYWRIGHT_BROWSERS_PATH"] = str(browsers_path)
+        environment["PLAYWRIGHT_BROWSERS_PATH"] = str(prepared)
         environment["PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD"] = "1"
 
         with Site(served) as site, _staged(candidate, workspace, site.base_url, output, report) as config:
@@ -203,3 +216,71 @@ def run(candidate, app_dir, patch, environment_name, browsers_path, workspace,
     finally:
         if keep_dir is None:
             shutil.rmtree(work, ignore_errors=True)
+
+
+def kept_traces(directory):
+    """Every trace a kept run left under directory, for the page to list."""
+    return sorted(pathlib.Path(directory).rglob("trace.zip"))
+
+
+def mine_name(item_name):
+    """Where the learner's own spec for an item goes, inside the workspace."""
+    return f"mine/{item_name.rsplit('/', 1)[-1]}.spec.ts"
+
+
+def _words(name):
+    """'reserveSucceeds' or 'reserve_succeeds' as 'reserve succeeds'."""
+    name = re.sub(r"(?<=[a-z0-9])([A-Z])", r" \1", name)
+    return name.replace("_", " ").strip().lower()
+
+
+def margin_for(text):
+    """Say roughly what kind of line this is, without saying what it does."""
+    line = text.strip()
+    test = re.match(r"test(?:\.\w+)?\(\s*['\"`](.+?)['\"`]", line)
+    if test:
+        return "a test: " + test.group(1)
+    helper = re.match(r"(?:export\s+)?(?:async\s+)?function\s+(\w+)", line)
+    if helper:
+        return "a helper: " + _words(helper.group(1))
+    if line.startswith("import "):
+        return "imports"
+    if line.startswith(("//", "/*", "*")):
+        return "a note on why"
+    line = line.removeprefix("await ")
+    if line.startswith("expect("):
+        return "check the result"
+    for call, note in (
+        ("page.goto", "open the page"),
+        ("page.fill", "fill a field"),
+        ("page.selectOption", "pick an option"),
+        ("page.dblclick", "double click"),
+        ("page.click", "click"),
+        ("page.route", "stub the network"),
+        ("page.once", "handle a dialog"),
+        ("page.on", "handle an event"),
+        ("page.goBack", "go back"),
+        ("page.waitFor", "wait"),
+    ):
+        if line.startswith(call):
+            return note
+    if re.match(r"\w+\(page", line):
+        return "use the helper"
+    return ""
+
+
+def app_commands(url, mine):
+    """What the learner runs against the live app, as (what it's for, command)."""
+    run_mine = f"BASE_URL={url} npx playwright test {mine}"
+    return [
+        ("record clicks as test code, and pick up selectors",
+         f"npx playwright codegen --target playwright-test {url}"),
+        ("run your tests step by step, with the page beside them", f"{run_mine} --ui"),
+        ("watch your tests run in a browser", f"{run_mine} --headed"),
+        ("pause on each action with the inspector", f"{run_mine} --debug"),
+    ]
+
+
+def trace_command(trace):
+    """The command that opens one kept trace in the trace viewer."""
+    return f"npx playwright show-trace {trace}"
