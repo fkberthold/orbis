@@ -103,9 +103,9 @@ still gets a fresh page, so running in order doesn't mean sharing state.
 | `@pytest.mark.parametrize` | a plain `for` loop around `test(...)` |
 | `pytest.ini` | `playwright.config.ts` |
 
-In this course, `learner/` is a suite of exactly this shape. It has a
+In this course, `subjects/playwright/workspace/` is a suite of exactly this shape. It has a
 `package.json`, a `playwright.config.ts` that reads the app's address from
-`BASE_URL`, and `learner/mine/` for your spec files.
+`BASE_URL`, and `subjects/playwright/workspace/mine/` for your spec files.
 
 If you've used Robot Framework's Browser library, you've already used
 Playwright underneath, since that library is built on it. SeleniumLibrary is
@@ -184,7 +184,7 @@ to racing the page. Assert on the locator, and let Playwright do the reading.
 ## Look at the page before you write
 
 Each practice item runs its real app on a port of its own, linked from the item
-page. Your tests go in `learner/mine/`. Run these from `learner/`, after
+page. Your tests go in `subjects/playwright/workspace/mine/`. Run these from `subjects/playwright/workspace/`, after
 `source env.sh`:
 
 | to | run |

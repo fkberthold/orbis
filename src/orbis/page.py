@@ -21,7 +21,7 @@ import threading
 
 from markdown_it import MarkdownIt
 
-from . import progress
+from . import progress, subject
 from .environment import Site
 
 WEB = pathlib.Path(__file__).resolve().parent / "web"
@@ -30,14 +30,20 @@ DEFAULT_LOG = pathlib.Path("run") / "reveals.jsonl"
 _MARKDOWN = MarkdownIt("commonmark").enable("table")
 
 
-def find_items(items_root):
-    """Every item under items_root, keyed by its path below it."""
-    items_root = pathlib.Path(items_root)
+def find_items(subjects):
+    """Every item of every subject, keyed subject/item."""
     found = {}
-    for app in sorted(items_root.glob("*/*/app")):
-        item = app.parent
-        found[item.relative_to(items_root).as_posix()] = item
+    for each in subjects:
+        found.update(each.items())
     return found
+
+
+def find_steps(subjects):
+    """Every step that has a guide, keyed subject/step, in course order."""
+    return {
+        step.name: step.guide
+        for each in subjects for step in each.steps if step.guide
+    }
 
 
 def reference_of(item):
@@ -128,72 +134,84 @@ def _first_heading(path, fallback):
     return fallback
 
 
-def find_lessons(items_root):
-    """Every lesson beside items/, keyed the way items are, in course order."""
-    lessons_root = pathlib.Path(items_root).parent / "lessons"
-    return {
-        path.relative_to(lessons_root).with_suffix("").as_posix(): path
-        for path in sorted(lessons_root.glob("*/[0-9]*.md"))
-    }
+def _status(attempts, name):
+    last = attempts.last(name)
+    if not last:
+        return ""
+    word = _verdict_word(last)
+    return f" <span class=\"status {word}\">{word}</span>"
 
 
-def render_index(items, attempts, lessons=None):
-    """The course: each lesson in order, with its practice item behind it.
+def _step_label(step):
+    """'03-locators' as 'Step 3, locators', for a step with no guide to name it."""
+    number, _, slug = step.dir.partition("-")
+    label = slug.replace("-", " ")
+    return f"Step {int(number)}, {label}" if number.isdigit() else step.dir
 
-    A lesson with no item, like the one on just enough TypeScript, is still a
-    step and gets a page of its own. An item with no lesson yet is listed
-    apart. It can still be worked, but it isn't a step on the path, and mixing
-    it in would hide that.
+
+def render_index(subjects, attempts):
+    """The course: each subject's steps in order, with their practice items.
+
+    A step with a guide and no item, like the one on just enough TypeScript,
+    still gets a page of its own. A step with items and no guide yet stays on
+    the path, since its items belong there, and says the guide is still owed.
+    An item that no step lists is listed apart. It can still be worked, but it
+    isn't on the path, and mixing it in would hide that.
     """
-    if lessons is None:
-        lessons = {
-            name: lesson_of(name, item)
-            for name, item in items.items() if lesson_of(name, item).is_file()
-        }
-    steps, waiting = [], []
-    for name in sorted(lessons):
-        title = html.escape(_first_heading(lessons[name], name))
-        if name in items:
-            last = attempts.last(name)
-            status = (
-                f" <span class=\"status {_verdict_word(last)}\">{_verdict_word(last)}</span>"
-                if last else ""
+    body = "<main>\n<h1>Orbis</h1>\n"
+    body += "<p class=\"hint\">Each step is a guide, then an item to practice it on.</p>\n"
+    for course in subjects:
+        items = course.items()
+        listed = set()
+        steps = []
+        for step in course.steps:
+            practice = []
+            for item_dir in step.items:
+                name = f"{course.name}/{item_dir}"
+                listed.add(name)
+                if name in items:
+                    practice.append((name, items[name]))
+            links = ", ".join(
+                f"<a href=\"/item/{html.escape(name)}\">{html.escape(task_title(item))}</a>"
+                f"{_status(attempts, name)}"
+                for name, item in practice
             )
-            steps.append(
-                f"  <li><a href=\"/item/{html.escape(name)}\">{title}</a>"
-                f" <span class=\"title\">then practice: {html.escape(task_title(items[name]))}"
-                f"</span>{status}</li>"
+            if step.guide:
+                title = html.escape(_first_heading(step.guide, step.dir))
+                href = f"/item/{practice[0][0]}" if practice else f"/step/{step.name}"
+                tail = (
+                    f"then practice: {links}" if practice
+                    else "a guide to read, with nothing to practice yet"
+                )
+                steps.append(
+                    f"  <li><a href=\"{html.escape(href)}\">{title}</a>"
+                    f" <span class=\"title\">{tail}</span></li>"
+                )
+            else:
+                steps.append(
+                    f"  <li><span class=\"step\">{html.escape(_step_label(step))}</span>"
+                    f" <span class=\"title\">waiting for a guide, practice: {links}</span></li>"
+                )
+        body += f"<section class=\"subject\" id=\"subject-{html.escape(course.name)}\">\n"
+        body += f"<h2>{html.escape(course.title)}</h2>\n"
+        body += "<ol class=\"course\">\n" + "\n".join(steps) + "\n</ol>\n"
+        waiting = [
+            f"  <li><a href=\"/item/{html.escape(name)}\">{html.escape(task_title(item))}</a>"
+            f" <span class=\"title\">{html.escape(name)}</span>{_status(attempts, name)}</li>"
+            for name, item in items.items() if name not in listed
+        ]
+        if waiting:
+            body += (
+                "<div class=\"waiting\">\n<h3>Practice items no step lists yet</h3>\n"
+                "<p class=\"hint\">These work, but they aren't on the path.</p>\n"
+                "<ul>\n" + "\n".join(waiting) + "\n</ul>\n</div>\n"
             )
-        else:
-            steps.append(
-                f"  <li><a href=\"/lesson/{html.escape(name)}\">{title}</a>"
-                " <span class=\"title\">a lesson to read, with nothing to practice yet</span></li>"
-            )
-    for name, item in items.items():
-        if name not in lessons:
-            last = attempts.last(name)
-            status = (
-                f" <span class=\"status {_verdict_word(last)}\">{_verdict_word(last)}</span>"
-                if last else ""
-            )
-            waiting.append(
-                f"  <li><a href=\"/item/{html.escape(name)}\">{html.escape(task_title(item))}</a>"
-                f" <span class=\"title\">{html.escape(name)}</span>{status}</li>"
-            )
-    body = "<main>\n<h1>Orbis: Playwright</h1>\n"
-    body += "<p class=\"hint\">Each step is a lesson, then an item to practice it on.</p>\n"
-    body += "<ol id=\"course\">\n" + "\n".join(steps) + "\n</ol>\n"
-    if waiting:
-        body += (
-            "<section id=\"waiting\">\n<h2>Practice items waiting for a lesson</h2>\n"
-            "<p class=\"hint\">These work, but they aren't on the path yet.</p>\n"
-            "<ul>\n" + "\n".join(waiting) + "\n</ul>\n</section>\n"
-        )
+        body += "</section>\n"
     return _shell("Orbis", body + "</main>")
 
 
 def render_lesson_page(name, path):
-    """A lesson with no practice item behind it, on a page of its own."""
+    """A step's guide with no practice item behind it, on a page of its own."""
     body = (
         "<main>\n<p class=\"crumbs\"><a href=\"/\">the course</a></p>\n"
         f"<section id=\"lesson\">\n{_MARKDOWN.render(path.read_text())}</section>\n</main>"
@@ -205,7 +223,16 @@ def _spec_name(name):
     return f"mine/{name.rsplit('/', 1)[-1]}.spec.ts"
 
 
-def render_app(name, url):
+def _from_root(path):
+    """A path as typed from the repo root, or as it is when it lies elsewhere."""
+    path = pathlib.Path(path)
+    try:
+        return path.relative_to(subject.ROOT).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def render_app(name, item, url):
     """Where the learner drives the real app while writing tests.
 
     The tests are written against the live page, so it's one click away. Only
@@ -214,13 +241,14 @@ def render_app(name, url):
     """
     url = html.escape(url)
     spec = html.escape(_spec_name(name))
+    workspace = html.escape(_from_root(subject.of_item(item).workspace))
     run = f"BASE_URL={url} npx playwright test {spec}"
     return (
         "<section id=\"app\">\n<h2>The app</h2>\n"
         f"<p>The real app is running at <a href=\"{url}\" target=\"_blank\">{url}</a>."
         " Poke at it, watch what changes and when, and write your tests against it.</p>\n"
-        f"<p class=\"hint\">Write your tests in <code>learner/{spec}</code>. In a shell,"
-        " after <code>source env.sh</code> and <code>cd learner</code>:</p>\n"
+        f"<p class=\"hint\">Write your tests in <code>{workspace}/{spec}</code>. In a shell,"
+        f" after <code>source env.sh</code> and <code>cd {workspace}</code>:</p>\n"
         "<table>\n"
         f"<tr><td>record clicks as test code, and pick up selectors</td><td><code>npx playwright codegen --target playwright-test {url}</code></td></tr>\n"
         f"<tr><td>run your tests step by step, with the page beside them</td><td><code>{run} --ui</code></td></tr>\n"
@@ -230,11 +258,12 @@ def render_app(name, url):
     )
 
 
-def render_attempt(name, last):
+def render_attempt(name, item, last):
     """The gate's verdict on the learner's latest file, cell by cell."""
+    workspace = _from_root(subject.of_item(item).workspace)
     command = (
-        f"uv run python -m orbis.gate attempt items/{html.escape(name)}"
-        f" --candidate learner/{html.escape(_spec_name(name))}"
+        f"uv run python -m orbis.gate attempt {html.escape(_from_root(item))}"
+        f" --candidate {html.escape(workspace)}/{html.escape(_spec_name(name))}"
     )
     if last is None:
         return (
@@ -262,14 +291,15 @@ def render_attempt(name, last):
     )
 
 
-def lesson_of(name, item):
-    """The lesson that comes before an item, kept beside items/ in lessons/."""
-    return item.parents[2] / "lessons" / f"{name}.md"
+def guide_of(item):
+    """The guide of the step an item practices, or None if it has none yet."""
+    step = subject.of_item(item).step_of(item.name)
+    return step.guide if step else None
 
 
-def render_lesson(name, item):
-    path = lesson_of(name, item)
-    if not path.is_file():
+def render_lesson(item):
+    path = guide_of(item)
+    if path is None:
         return ""
     return f"<section id=\"lesson\">\n{_MARKDOWN.render(path.read_text())}</section>\n"
 
@@ -284,7 +314,7 @@ def _demote(rendered):
 
 def render_item(name, item, revealed, last=None, app_url=None):
     task = _MARKDOWN.render((item / "TASK.md").read_text())
-    if lesson_of(name, item).is_file():
+    if guide_of(item):
         task = "<p class=\"step\">Practice</p>\n" + _demote(task)
     rows = []
     for number, text, margin in worked_lines(reference_of(item)):
@@ -303,10 +333,10 @@ def render_item(name, item, revealed, last=None, app_url=None):
     body = (
         f"<main data-item=\"{html.escape(name)}\">\n"
         "<p class=\"crumbs\"><a href=\"/\">the course</a></p>\n"
-        f"{render_lesson(name, item)}"
+        f"{render_lesson(item)}"
         f"<section id=\"task\">\n{task}</section>\n"
-        f"{render_app(name, app_url) if app_url else ''}\n"
-        f"{render_attempt(name, last)}\n"
+        f"{render_app(name, item, app_url) if app_url else ''}\n"
+        f"{render_attempt(name, item, last)}\n"
         "<section id=\"answer\">\n<h2>The worked answer</h2>\n"
         "<p class=\"hint\">Write your own attempt first. Each line opens on its own,"
         " and the margin says what kind of line it is.</p>\n"
@@ -315,7 +345,7 @@ def render_item(name, item, revealed, last=None, app_url=None):
     return _shell(task_title(item), body)
 
 
-def _handler(items, log, attempts, apps, lessons):
+def _handler(subjects, items, log, attempts, apps, steps):
     class Handler(http.server.BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
             pass
@@ -332,12 +362,12 @@ def _handler(items, log, attempts, apps, lessons):
         def do_GET(self):
             path = self.path.split("?", 1)[0]
             if path == "/":
-                page = render_index(items, attempts, lessons)
+                page = render_index(subjects, attempts)
                 return self._send(200, "text/html; charset=utf-8", page)
-            if path.startswith("/lesson/"):
-                name = path[len("/lesson/"):]
-                if name in lessons:
-                    page = render_lesson_page(name, lessons[name])
+            if path.startswith("/step/"):
+                name = path[len("/step/"):]
+                if name in steps:
+                    page = render_lesson_page(name, steps[name])
                     return self._send(200, "text/html; charset=utf-8", page)
             if path.startswith("/item/"):
                 name = path[len("/item/"):]
@@ -388,8 +418,9 @@ class Server:
     from one sitting to the next.
     """
 
-    def __init__(self, items_root, log_path, port=0, attempts_path=None):
-        self.items = find_items(items_root)
+    def __init__(self, subjects_root, log_path, port=0, attempts_path=None):
+        self.subjects = subject.find(subjects_root)
+        self.items = find_items(self.subjects)
         self.log = pathlib.Path(log_path)
         attempts = pathlib.Path(attempts_path or self.log.parent / "attempts.jsonl")
         self.apps = {
@@ -397,8 +428,8 @@ class Server:
             for index, (name, item) in enumerate(self.items.items())
         }
         handler = _handler(
-            self.items, progress.RevealLog(self.log), progress.AttemptLog(attempts),
-            self.apps, find_lessons(items_root),
+            self.subjects, self.items, progress.RevealLog(self.log),
+            progress.AttemptLog(attempts), self.apps, find_steps(self.subjects),
         )
         self._server = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
         self.port = self._server.server_address[1]
@@ -422,11 +453,13 @@ class Server:
 
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="orbis.page")
-    parser.add_argument("--items", default="items", help="the items directory")
+    parser.add_argument(
+        "--subjects", default=str(subject.SUBJECTS), help="the subjects directory"
+    )
     parser.add_argument("--log", default=str(DEFAULT_LOG), help="where reveals go")
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args(argv)
-    with Server(args.items, args.log, args.port) as running:
+    with Server(args.subjects, args.log, args.port) as running:
         print(f"Orbis at {running.base_url}  (reveals go to {args.log})")
         for name, app in running.apps.items():
             print(f"  {name:<32} {app.base_url}")

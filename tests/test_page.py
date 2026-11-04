@@ -15,13 +15,15 @@ from orbis import page as orbis_page
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 ITEM = "playwright/01-seat-desk"
-REFERENCE = ROOT / "items" / ITEM / "reference" / "seat-desk.spec.ts"
+REFERENCE = (
+    ROOT / "subjects" / "playwright" / "items" / "01-seat-desk" / "reference" / "seat-desk.spec.ts"
+)
 
 
 @pytest.fixture
 def server(tmp_path):
     log = tmp_path / "reveals.jsonl"
-    with orbis_page.Server(ROOT / "items", log) as running:
+    with orbis_page.Server(ROOT / "subjects", log) as running:
         yield running
 
 
@@ -95,17 +97,50 @@ def test_a_lesson_comes_before_its_task(page: Page, server) -> None:
     assert lesson_top < task_top
 
 
-def test_an_item_without_a_lesson_has_no_lesson_section(page: Page, server) -> None:
+def test_an_item_whose_step_has_no_guide_has_no_lesson_section(page: Page, server) -> None:
     page.goto(server.base_url + "/item/playwright/04-ferry-booking")
     expect(page.locator("#lesson")).to_have_count(0)
 
 
+COURSE = "#subject-playwright .course > li"
+
+
 def test_lesson_one_is_the_second_step(page: Page, server) -> None:
     page.goto(server.base_url + "/")
-    second = page.locator("#course li").nth(1)
+    second = page.locator(COURSE).nth(1)
     expect(second).to_contain_text("What Playwright does that Selenium")
-    expect(second.locator("a")).to_have_attribute("href", "/item/" + ITEM)
-    expect(page.locator("#waiting a[href='/item/playwright/04-ferry-booking']")).to_have_count(1)
+    expect(second.locator("a").first).to_have_attribute("href", "/item/" + ITEM)
+
+
+def test_the_steps_follow_subject_toml(page: Page, server) -> None:
+    """The order is the curriculum's, which puts item 05 before item 02.
+
+    A directory listing would sort them the other way, so this is the check
+    that the order came from subject.toml.
+    """
+    page.goto(server.base_url + "/")
+    steps = page.locator(COURSE)
+    expect(steps).to_have_count(6)
+    for index, practice in enumerate([
+        None, "01-seat-desk", "05-repair-queue", "02-label-form",
+        "04-ferry-booking", "03-parts-lookup",
+    ]):
+        # A step with a guide links its item twice, from the guide's title and
+        # from the practice line, so this asks only that the link is there.
+        links = steps.nth(index).locator("a[href^='/item/']")
+        if practice:
+            expect(links.first).to_have_attribute("href", f"/item/playwright/{practice}")
+        else:
+            expect(links).to_have_count(0)
+
+
+def test_a_step_with_no_guide_keeps_its_item_on_the_path(page: Page, server) -> None:
+    page.goto(server.base_url + "/")
+    step = page.locator(COURSE).nth(4)
+    expect(step).to_contain_text("Step 6, navigations")
+    expect(step).to_contain_text("waiting for a guide")
+    expect(step.locator("a[href='/item/playwright/04-ferry-booking']")).to_have_count(1)
+    expect(page.locator(".waiting")).to_have_count(0)
 
 
 def test_the_lesson_holds_the_only_h1(page: Page, server) -> None:
@@ -120,6 +155,9 @@ def test_the_real_app_is_one_click_away(page: Page, server) -> None:
     page.goto(server.base_url + "/item/" + ITEM)
     address = page.locator("#app a").first.get_attribute("href")
     expect(page.locator("#app")).to_contain_text("codegen --target playwright-test " + address)
+    expect(page.locator("#app")).to_contain_text(
+        "subjects/playwright/workspace/mine/01-seat-desk.spec.ts"
+    )
 
     page.goto(address)
     expect(page.locator("#heading")).to_have_text("Dockside Seat Desk")
@@ -128,7 +166,7 @@ def test_the_real_app_is_one_click_away(page: Page, server) -> None:
 
 def test_a_lesson_with_no_item_is_still_a_step(page: Page, server) -> None:
     page.goto(server.base_url + "/")
-    first = page.locator("#course li").first
+    first = page.locator(COURSE).first
     expect(first).to_contain_text("The TypeScript you need")
     first.locator("a").click()
     expect(page.locator("#lesson h1")).to_have_text("The TypeScript you need, read against Python")

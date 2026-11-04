@@ -34,7 +34,7 @@ Write Playwright tests that hold the queue to the rules below.
 
 - `app/` is the queue itself. Read it if you want to.
 - Write your tests in TypeScript with `@playwright/test`, in a file ending
-  `.spec.ts` under `learner/mine/`.
+  `.spec.ts` under `subjects/playwright/workspace/mine/`.
 - Each test gets a fresh `page`, and `await page.goto('/')` opens the queue.
   Nothing else is set up for you.
 - Every test starts from a fresh page, so the queue is back to the table above.

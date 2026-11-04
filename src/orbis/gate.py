@@ -14,17 +14,23 @@ import shutil
 import subprocess
 import sys
 
-from . import progress, runner, verdict
+from . import progress, runner, subject, verdict
 
 GATE_PASS = "OK"
 GATE_FAIL = "FAIL"
 
 
 class Item:
-    """One authored item: a real app, its mutations, and its reference."""
+    """One authored item: a real app, its mutations, and its reference.
+
+    It lives at subjects/<subject>/items/<item>, so the subject it belongs to,
+    and the workspace its candidates run in, are two levels up.
+    """
 
     def __init__(self, root):
         self.root = pathlib.Path(root).resolve()
+        self.subject = subject.of_item(self.root)
+        self.name = f"{self.subject.name}/{self.root.name}"
         self.app = self.root / "app"
         self.mutations = sorted((self.root / "mutations").glob("*.patch"))
         self.reference = self._one_file(self.root / "reference")
@@ -80,12 +86,12 @@ def grade(item, candidate, browsers, keep=None):
 
     runs = [
         runner.run(candidate, item.app, None, runner.REAL, browsers,
-                   keep_dir=kept(runner.REAL))
+                   item.subject.workspace, keep_dir=kept(runner.REAL))
     ]
     for patch in item.mutations:
         runs.append(
             runner.run(candidate, item.app, patch, patch.stem, browsers,
-                       keep_dir=kept(patch.stem))
+                       item.subject.workspace, keep_dir=kept(patch.stem))
         )
     return runs
 
@@ -164,7 +170,7 @@ def command_attempt(args):
     item = Item(args.item)
     item.check()
     candidate = pathlib.Path(args.candidate).resolve()
-    name = f"{item.root.parent.name}/{item.root.name}"
+    name = item.name
 
     # The traces are what explain a verdict, so they're kept, one directory
     # per environment. Only the latest attempt's are kept, which is the one

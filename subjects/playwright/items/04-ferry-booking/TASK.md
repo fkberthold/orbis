@@ -33,7 +33,7 @@ button of its own.
 
 - The booking itself, running live. Its address is on this page, under The app.
 - Write your tests in TypeScript with `@playwright/test`, in a file ending
-  `.spec.ts` under `learner/mine/`.
+  `.spec.ts` under `subjects/playwright/workspace/mine/`.
 - Each test gets a fresh `page`, and `await page.goto('/')` opens the booking.
   `await page.goto('/#/review')` opens the review step by its address. Nothing
   else is set up for you, and nothing entered in one test carries into the next.

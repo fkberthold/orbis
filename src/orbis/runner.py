@@ -21,13 +21,6 @@ import xml.etree.ElementTree as ET
 from . import tracing, verdict
 from .environment import MutationError, Site, materialize
 
-# The node workspace the learner's TypeScript runs in. A spec has to sit inside
-# it, or `import ... from '@playwright/test'` can't be resolved, so every run
-# copies the candidate in rather than running it where it lies.
-LEARNER = pathlib.Path(
-    os.environ.get("ORBIS_LEARNER", pathlib.Path(__file__).resolve().parents[2] / "learner")
-)
-
 REAL = "real"
 RUN_TIMEOUT_S = 300
 
@@ -116,14 +109,19 @@ def _classify(returncode, outcomes, expects, asserted_in_source):
 
 
 @contextlib.contextmanager
-def _staged(candidate, base_url, output, report):
+def _staged(candidate, workspace, base_url, output, report):
     """Copy candidate into the workspace beside a config written for this run.
+
+    The workspace is the subject's node workspace, where the learner's
+    TypeScript runs. A spec has to sit inside it, or `import ... from
+    '@playwright/test'` can't be resolved, so every run copies the candidate
+    in rather than running it where it lies.
 
     The config pins everything the verdict depends on: the app's address, a
     trace for every test, one worker so runs don't race each other, no
     retries, and a junit report to read the outcomes from.
     """
-    stage = pathlib.Path(tempfile.mkdtemp(prefix="run-", dir=_runs_dir()))
+    stage = pathlib.Path(tempfile.mkdtemp(prefix="run-", dir=_runs_dir(workspace)))
     try:
         shutil.copy(candidate, stage / candidate.name)
         config = stage / "playwright.config.ts"
@@ -144,13 +142,13 @@ def _staged(candidate, base_url, output, report):
         shutil.rmtree(stage, ignore_errors=True)
 
 
-def _runs_dir():
-    runs = LEARNER / "runs"
+def _runs_dir(workspace):
+    runs = pathlib.Path(workspace) / "runs"
     runs.mkdir(parents=True, exist_ok=True)
     return runs
 
 
-def run(candidate, app_dir, patch, environment_name, browsers_path,
+def run(candidate, app_dir, patch, environment_name, browsers_path, workspace,
         keep_dir=None, timeout=RUN_TIMEOUT_S):
     """Execute candidate against one environment and return a Run."""
     candidate = pathlib.Path(candidate).resolve()
@@ -172,12 +170,12 @@ def run(candidate, app_dir, patch, environment_name, browsers_path,
         environment["PLAYWRIGHT_BROWSERS_PATH"] = str(browsers_path)
         environment["PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD"] = "1"
 
-        with Site(served) as site, _staged(candidate, site.base_url, output, report) as config:
+        with Site(served) as site, _staged(candidate, workspace, site.base_url, output, report) as config:
             command = ["npx", "playwright", "test", "--config", str(config)]
             try:
                 finished = subprocess.run(
                     command,
-                    cwd=LEARNER,
+                    cwd=workspace,
                     env=environment,
                     capture_output=True,
                     text=True,

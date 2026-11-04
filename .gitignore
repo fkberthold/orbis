@@ -11,8 +11,8 @@ run/
 .beads/proxieddb/
 *.gate.lock*
 
-# The learner's node workspace. The lockfile is committed, the install isn't.
-learner/node_modules/
-learner/runs/
-learner/test-results/
-learner/playwright-report/
+# Each subject's node workspace. The lockfile is committed, the install isn't.
+subjects/*/workspace/node_modules/
+subjects/*/workspace/runs/
+subjects/*/workspace/test-results/
+subjects/*/workspace/playwright-report/

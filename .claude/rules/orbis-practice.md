@@ -9,9 +9,10 @@ the hazard list. The argument for why the design is shaped this way is in
 ## The recipe, in order, and the order matters
 
 **An item is practice for a lesson.** Know which lesson it practices before
-you build it, and say where it sits in the course. An item with no lesson
-behind it isn't on the learner's path, and the index lists it apart. See "THE
-LEARNER'S PATH IS THE SPEC" in `CLAUDE.md`.
+you build it, and say where it sits in the course. An item lives in
+`subjects/<subject>/items/`, and the step it practices lists it in
+`subject.toml`. An item no step lists isn't on the learner's path, and the
+index lists it apart. See "THE LEARNER'S PATH IS THE SPEC" in `CLAUDE.md`.
 
 **1. Write the target app, or pick the environment.** It has to be MUTABLE BY
 EDITING FILES, which is what makes a mutation cheap. A static page with JS is

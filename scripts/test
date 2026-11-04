@@ -33,18 +33,25 @@ ok()   { printf '  PASS  %s\n' "$1"; pass=$((pass + 1)); }
 bad()  { printf '  FAIL  %s\n' "$1"; fail=$((fail + 1)); failed_names="${failed_names}  - ${1}"$'\n'; }
 
 # ---------------------------------------------------------------------------
-# Item discovery. An item is a directory holding an app/, so a half-written
-# directory is not silently counted as a passing item.
+# Item discovery. An item is a directory under subjects/<subject>/items/ that
+# holds an app/, so a half-written directory is not silently counted as a
+# passing item.
 # ---------------------------------------------------------------------------
 ITEMS=()
 while IFS= read -r d; do
   ITEMS+=("$d")
-done < <(find items -mindepth 2 -maxdepth 2 -type d -exec test -d '{}/app' ';' -print 2>/dev/null | sort)
+done < <(find subjects -mindepth 3 -maxdepth 3 -type d -path 'subjects/*/items/*' -exec test -d '{}/app' ';' -print 2>/dev/null | sort)
 
 if [ "${#ITEMS[@]}" -eq 0 ]; then
-  echo "test: no items found under items/. An empty corpus is not a pass." >&2
+  echo "test: no items found under subjects/*/items/. An empty corpus is not a pass." >&2
   exit 2
 fi
+
+# An item's name in every log is subject/item, as in playwright/01-seat-desk.
+item_name() {
+  local rest="${1#subjects/}"
+  printf '%s/%s' "${rest%%/*}" "${rest##*/}"
+}
 printf 'items: %d\n\n' "${#ITEMS[@]}"
 
 # ---------------------------------------------------------------------------
@@ -56,7 +63,7 @@ printf 'items: %d\n\n' "${#ITEMS[@]}"
 # ---------------------------------------------------------------------------
 echo "tier 1, no browser:"
 for item in "${ITEMS[@]}"; do
-  name="${item#items/}"
+  name="$(item_name "$item")"
   missing=""
   for need in TASK.md app reference mutations candidates; do
     [ -e "${item}/${need}" ] || missing="${missing} ${need}"
@@ -125,11 +132,12 @@ fi
 echo
 echo "tier 2, the gate:"
 
-# The learner's specs run under node, from the workspace in learner/. Install
-# it from the lockfile the first time, so a fresh clone can gate.
-if [ ! -d learner/node_modules/@playwright/test ]; then
-  if ! PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci --prefix learner --no-audit --no-fund >/dev/null 2>&1; then
-    echo "test: npm ci --prefix learner failed, so no spec can run." >&2
+# The learner's specs run under node, from the subject's workspace. Install it
+# from the lockfile the first time, so a fresh clone can gate.
+WORKSPACE=subjects/playwright/workspace
+if [ ! -d "${WORKSPACE}/node_modules/@playwright/test" ]; then
+  if ! PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci --prefix "$WORKSPACE" --no-audit --no-fund >/dev/null 2>&1; then
+    echo "test: npm ci --prefix ${WORKSPACE} failed, so no spec can run." >&2
     exit 2
   fi
 fi
@@ -149,7 +157,7 @@ printf '  browsers: %s\n' "$PLAYWRIGHT_BROWSERS_PATH"
 
 LOGDIR="$(mktemp -d)"
 for item in "${ITEMS[@]}"; do
-  name="${item#items/}"
+  name="$(item_name "$item")"
   log="${LOGDIR}/$(echo "$name" | tr '/' '-').log"
   start=$SECONDS
   uv run --quiet python -m orbis.gate selfcheck "$item" > "$log" 2>&1
