@@ -15,7 +15,7 @@ from orbis import page as orbis_page
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 ITEM = "playwright/01-seat-desk"
-ITEM_DIR = ROOT / "items" / ITEM
+ITEM_DIR = ROOT / "subjects" / "playwright" / "items" / "01-seat-desk"
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ def run_dir(tmp_path):
 
 @pytest.fixture
 def server(run_dir):
-    with orbis_page.Server(ROOT / "items", run_dir / "reveals.jsonl") as running:
+    with orbis_page.Server(ROOT / "subjects", run_dir / "reveals.jsonl") as running:
         yield running
 
 
@@ -47,14 +47,17 @@ def test_the_page_shows_the_last_attempt(page: Page, server, run_dir) -> None:
 def test_no_attempt_says_so(page: Page, server) -> None:
     page.goto(server.base_url + "/item/" + ITEM)
     expect(page.locator("#attempt")).to_contain_text("No attempt graded yet")
-    expect(page.locator("#attempt code")).to_contain_text("orbis.gate attempt")
+    expect(page.locator("#attempt code")).to_contain_text(
+        "orbis.gate attempt subjects/playwright/items/01-seat-desk"
+        " --candidate subjects/playwright/workspace/mine/01-seat-desk.spec.ts"
+    )
 
 
 def test_the_index_shows_where_each_item_stands(page: Page, server, run_dir) -> None:
     attempts = progress.AttemptLog(run_dir / "attempts.jsonl")
     attempts.record(ITEM, "mine.py", False, cells([("real", "silent")]))
     page.goto(server.base_url + "/")
-    step = page.locator("#course li", has=page.locator(f"a[href='/item/{ITEM}']"))
+    step = page.locator(".course > li", has=page.locator(f"a[href='/item/{ITEM}']"))
     expect(step).to_contain_text("rejected")
 
 

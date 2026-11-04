@@ -1,0 +1,35 @@
+# The Playwright course, in the order a learner takes it.
+#
+# Each step is a directory under steps/, named after its number in
+# CURRICULUM.md. A step's guide is steps/<dir>/guide.md. A step can be listed
+# before its guide exists, so its items stay on the path, and the index marks
+# them as waiting for a guide.
+#
+# The items a step lists are its practice, by directory name under items/.
+
+title = "Playwright"
+runner = "playwright"
+workspace = "workspace"
+
+[[step]]
+dir = "00-typescript"
+
+[[step]]
+dir = "02-writing-tests"
+items = ["01-seat-desk"]
+
+[[step]]
+dir = "03-locators"
+items = ["05-repair-queue"]
+
+[[step]]
+dir = "04-assertions"
+items = ["02-label-form"]
+
+[[step]]
+dir = "06-navigations"
+items = ["04-ferry-booking"]
+
+[[step]]
+dir = "12-mocking"
+items = ["03-parts-lookup"]

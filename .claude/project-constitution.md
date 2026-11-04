@@ -47,13 +47,13 @@ canonical_commands:
   deploy: ""
   gen: ""
 
-# The learner writes TypeScript Playwright (Frank, 2026-10-31), so learner/
-# is a node workspace pinning @playwright/test 1.59.1, the exact version of
-# the nixpkgs driver. Orbis itself is still Python under uv. npm is allowed
-# for that one directory and nowhere else.
+# The learner writes TypeScript Playwright (Frank, 2026-10-31), so
+# subjects/playwright/workspace/ is a node workspace pinning @playwright/test
+# 1.59.1, the exact version of the nixpkgs driver. Orbis itself is still
+# Python under uv. npm is allowed for that one directory and nowhere else.
 bypass_patterns:
-  - "npm ci --prefix learner"
-  - "npm install --prefix learner"
+  - "npm ci --prefix subjects/playwright/workspace"
+  - "npm install --prefix subjects/playwright/workspace"
 ---
 
 # Why these fields read the way they do

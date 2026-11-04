@@ -61,21 +61,27 @@ The order is deliberate. The riskiest assumption in the whole design is that
 mutations of a web app yield a usable oracle for a browser test, and nothing
 else matters if that is false. So it gets tested first, with one item, by hand.
 
-    items/playwright/01-seat-desk/
-      TASK.md          the statement a learner reads
-      app/             the real target, a static page with JS
-      mutations/       four patches, one broken rule each
-      reference/       the reference solution, a .spec.ts
-      candidates/      four solutions the gate has to reject
-
-    learner/           the node workspace your TypeScript runs in
-      mine/            where your own .spec.ts files go
+    subjects/playwright/
+      subject.toml     the course in order, and which item practices which step
+      CURRICULUM.md    why the steps are in that order
+      steps/           a folder per step, holding its guide.md once written
+      items/01-seat-desk/
+        TASK.md        the statement a learner reads
+        app/           the real target, a static page with JS
+        mutations/     four patches, one broken rule each
+        reference/     the reference solution, a .spec.ts
+        candidates/    four solutions the gate has to reject
+      drills/          empty for now
+      workspace/       the node workspace your TypeScript runs in
+        mine/          where your own .spec.ts files go
 
     src/orbis/
+      subject.py       read a subject's subject.toml
       verdict.py       the four cells
       environment.py   copy the app, apply a patch, serve it
-      tracing.py       count the assertions a run actually executed
-      runner.py        one candidate against one environment
+      runners/         what each subject's tooling needs, behind one registry
+        playwright.py        one spec against one environment, and the page's commands
+        playwright_trace.py  count the assertions a run actually executed
       gate.py          the three conditions, a selfcheck, and a filter
       page.py          the task and its worked answer, one line at a time
       progress.py      the reveals and attempts logs
@@ -93,13 +99,13 @@ source env.sh    # resolves nixpkgs#playwright-driver.browsers
 uv sync
 
 # grade the item's own reference
-uv run python -m orbis.gate gate items/playwright/01-seat-desk
+uv run python -m orbis.gate gate subjects/playwright/items/01-seat-desk
 
 # prove the gate can fail, by running the candidates it must reject
-uv run python -m orbis.gate selfcheck items/playwright/01-seat-desk
+uv run python -m orbis.gate selfcheck subjects/playwright/items/01-seat-desk
 
 # sort a generated set of patches by what the reference makes of each one
-uv run python -m orbis.gate filter items/playwright/01-seat-desk --mutations <dir>
+uv run python -m orbis.gate filter subjects/playwright/items/01-seat-desk --mutations <dir>
 ```
 
 To work through the course, start the page and open the address it prints:
@@ -108,8 +114,9 @@ To work through the course, start the page and open the address it prints:
 uv run python -m orbis.page    # the course at http://127.0.0.1:8765
 ```
 
-The front page is the course, a lesson per step in order, each followed by an
-item to practice it on. Items that don't have a lesson yet are listed apart.
+The front page is the course, a step at a time in the order `subject.toml`
+gives, each guide followed by an item to practice it on. A step whose guide
+isn't written yet still lists its item and says the guide is owed.
 
 A step's page is the lesson, then the task, then the real app. Each item's app
 runs on a port of its own (8766 and up), because the tests call
@@ -125,7 +132,8 @@ nothing to fill in.
 To grade your own tests, point the gate at your file:
 
 ```bash
-uv run python -m orbis.gate attempt items/playwright/01-seat-desk --candidate learner/mine/01-seat-desk.spec.ts
+uv run python -m orbis.gate attempt subjects/playwright/items/01-seat-desk \
+    --candidate subjects/playwright/workspace/mine/01-seat-desk.spec.ts
 ```
 
 It runs your file against the real app and every broken copy, and appends

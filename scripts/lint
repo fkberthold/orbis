@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# scripts/lint — ruff over the code and the items.
+# scripts/lint — ruff over the code and the subjects.
 #
 # Green, and keeping it that way is yours. Do not quiet a new finding by
 # widening an ignore list. Fix it, or justify that one site with a comment
 # ABOVE the directive saying why.
 #
-# items/ is in scope on purpose. A reference solution and a candidate are code
+# subjects/ is in scope on purpose. A reference solution and a candidate are code
 # a human reads, and the candidates are deliberately weak rather than
 # deliberately sloppy.
 set -uo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 2
-exec uv run --quiet ruff check src items scripts tests 2>&1
+exec uv run --quiet ruff check src subjects scripts tests 2>&1

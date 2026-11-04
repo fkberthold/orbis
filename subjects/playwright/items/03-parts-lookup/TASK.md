@@ -37,7 +37,7 @@ For rule 4 you have to stub, because the real file never fails. Use
 - `app/` is the lookup itself. `app/parts.json` is the catalog, and your tests
   may name parts from it.
 - Write your tests in TypeScript with `@playwright/test`, in a file ending
-  `.spec.ts` under `learner/mine/`.
+  `.spec.ts` under `subjects/playwright/workspace/mine/`.
 - Each test gets a fresh `page`, and `await page.goto('/')` opens the lookup.
   Nothing else is set up for you.
 

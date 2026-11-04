@@ -20,7 +20,7 @@ Write Playwright tests that hold the desk to the rules below.
 
 - The desk itself, running live. Its address is on this page, under The app.
 - Write your tests in TypeScript with `@playwright/test`, in a file ending
-  `.spec.ts` under `learner/mine/`.
+  `.spec.ts` under `subjects/playwright/workspace/mine/`.
 - Each test gets a fresh `page`, and `await page.goto('/')` opens the desk.
   Nothing else is set up for you.
 

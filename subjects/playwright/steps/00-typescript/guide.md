@@ -67,5 +67,5 @@ checking the page while your next lines change it, and I suspect what it ends
 up checking is mostly luck.
 
 A lint rule, `@typescript-eslint/no-floating-promises`, flags every one of
-these by machine. It isn't set up in `learner/` yet, so for now the check is
+these by machine. It isn't set up in `subjects/playwright/workspace/` yet, so for now the check is
 reading your test back for a page call with no `await` in front of it.

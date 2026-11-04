@@ -88,8 +88,10 @@ opened at all. Every piece looked fine from the builder's side. Nobody walked
 it from the learner's side.
 
 **The lesson is the unit of progression, and the item is its practice.** The
-index is the course, in learning order. An item without a lesson isn't on the
-path yet, and the index says so rather than mixing it in.
+index is the course, in learning order, and `subject.toml` is where that
+order lives. A step whose guide isn't written yet stays on the path with its
+items and says the guide is owed. An item no step lists isn't on the path, and
+the index lists it apart rather than mixing it in.
 
 **The first step gets the first lesson.** Fill gaps from the front of the
 course, never from wherever the material is most interesting to write.
@@ -190,8 +192,18 @@ source env.sh                  # resolves the nixpkgs Playwright browsers
 uv sync                        # install, uv and never pip
 scripts/test                   # the real gate over every item
 scripts/test --fast            # the tier that starts no browser
-scripts/lint                   # ruff over src/ and items/
+scripts/lint                   # ruff over src/ and subjects/
 ```
+
+Each subject is one folder, and the engine in `src/orbis/` is shared.
+
+    subjects/playwright/
+      subject.toml       the course in order: steps, and the items each one practices
+      CURRICULUM.md      why the steps are in that order
+      steps/NN-slug/     guide.md, once it's written
+      items/NN-slug/     TASK.md, app/, reference/, mutations/, candidates/
+      drills/            empty for now
+      workspace/         the node workspace the learner's TypeScript runs in
 
 `scripts/test` runs `selfcheck` on every item, which grades the reference AND
 every candidate the item ships to be rejected. That is the gate, and it is the
@@ -216,16 +228,17 @@ through nix rather than hardcoding it, since a channel bump moves it.
 "This should be using Typescript playwright, not python, and assume the person
 is not expert in Typescript." So references, candidates, task statements and
 lessons are TypeScript under `@playwright/test`, run from the node workspace in
-`learner/`. The runner, gate, page and Orbis's own tests stay Python (D2).
+`subjects/playwright/workspace/`. The runner, gate, page and Orbis's own tests
+stay Python (D2).
 
 **Versions line up exactly.** nixpkgs `playwright-driver` is 1.59.1 and its
-bundle carries chromium-1217. `learner/` pins `@playwright/test` 1.59.1, which
+bundle carries chromium-1217. The workspace pins `@playwright/test` 1.59.1, which
 drives that bundle. Measured 2026-10-31. Orbis's own tests still use the Python
 `playwright==1.59.0`, since PyPI has no 1.59.1.
 
-**A spec has to sit inside `learner/`** or its `import ... from
+**A spec has to sit inside the workspace** or its `import ... from
 '@playwright/test'` can't be resolved. The runner copies each candidate into
-`learner/runs/` beside a config it writes for that run.
+`subjects/playwright/workspace/runs/` beside a config it writes for that run.
 
 **Two things that bite and are not the linking problem.** `uv sync` will pick a
 CPython with no playwright wheel unless `requires-python` caps it, and the error
@@ -400,8 +413,8 @@ and because three capture surfaces in the predecessor project were specified and
 left empty when they asked the learner to record something. A page records as a
 side effect of reading.
 
-**MKDOCS IS NOT INSTALLED on this box.** That is why the predecessor carries a
-`--skip-docs` flag. Prefer plain Python emitting HTML.
+**mkdocs-material runs through `uvx`**, measured 2026-11-04. It isn't
+installed into the system and doesn't need to be.
 
 ## What this does not solve, stated so nobody rediscovers it
 

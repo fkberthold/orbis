@@ -9,9 +9,10 @@ the hazard list. The argument for why the design is shaped this way is in
 ## The recipe, in order, and the order matters
 
 **An item is practice for a lesson.** Know which lesson it practices before
-you build it, and say where it sits in the course. An item with no lesson
-behind it isn't on the learner's path, and the index lists it apart. See "THE
-LEARNER'S PATH IS THE SPEC" in `CLAUDE.md`.
+you build it, and say where it sits in the course. An item lives in
+`subjects/<subject>/items/`, and the step it practices lists it in
+`subject.toml`. An item no step lists isn't on the learner's path, and the
+index lists it apart. See "THE LEARNER'S PATH IS THE SPEC" in `CLAUDE.md`.
 
 **1. Write the target app, or pick the environment.** It has to be MUTABLE BY
 EDITING FILES, which is what makes a mutation cheap. A static page with JS is
@@ -103,7 +104,7 @@ first attempt reaches for. Measured 2026-10-30.
 
 **The known hole, and it is in the README rather than hidden.** A plain-value
 assertion like `expect(count).toBe(1)` runs in node and never reaches the trace,
-so `tracing.has_assert_statement` scans the source for `expect(` as a second
+so `runners/playwright_trace.has_assert_statement` scans the source for `expect(` as a second
 channel, and a candidate counts as asserting if either channel says so. That
 errs toward calling a run non-vacuous. So `expect(true).toBe(true)` reads as an
 assertion and the vacuous cell MISSES it. It is still rejected, by G2, because
