@@ -7,6 +7,7 @@ as the only full copy anybody edits.
 
 import functools
 import http.server
+import os
 import pathlib
 import shutil
 import subprocess
@@ -54,9 +55,16 @@ def materialize(app_dir, patch_path, dest):
     if patch_path is None:
         return dest
 
+    # Inside a git checkout, git apply reads the patch's paths from the top of
+    # the checkout and skips any that fall outside the cwd, and it exits 0
+    # having changed nothing. `gate attempt` keeps its runs under run/ in the
+    # repo, so every mutation there was the real app. The ceiling stops git
+    # from finding the checkout above dest, so it patches dest like a plain
+    # directory.
     applied = subprocess.run(
-        ["git", "apply", "--whitespace=nowarn", str(pathlib.Path(patch_path))],
+        ["git", "apply", "--whitespace=nowarn", str(pathlib.Path(patch_path).resolve())],
         cwd=dest,
+        env={**os.environ, "GIT_CEILING_DIRECTORIES": str(dest.resolve().parent)},
         capture_output=True,
         text=True,
         check=False,
