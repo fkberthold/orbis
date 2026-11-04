@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A training system that knows whether the learner is right."
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "markdown-it-py>=3",
+    "mkdocs-material==9.8.0",
     "playwright==1.59.0",
     "pytest-playwright>=0.7",
 ]

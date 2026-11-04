@@ -16,3 +16,6 @@ subjects/*/workspace/node_modules/
 subjects/*/workspace/runs/
 subjects/*/workspace/test-results/
 subjects/*/workspace/playwright-report/
+
+# The reading site orbis.site builds. It gets rebuilt from subjects/ on demand.
+build/

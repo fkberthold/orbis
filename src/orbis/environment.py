@@ -27,6 +27,7 @@ class Site:
     """Serve a directory on a loopback port, the kernel's pick unless given one."""
 
     def __init__(self, root, port=0):
+        self.root = pathlib.Path(root)
         handler = functools.partial(_QuietHandler, directory=str(root))
         self._server = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
         self.port = self._server.server_address[1]

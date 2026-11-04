@@ -1,4 +1,10 @@
-"""The page: a task, and its worked answer opened one line at a time.
+"""The page: the built reading site, plus the parts that are live.
+
+orbis.site builds the guides, the course and each item's task into a static
+mkdocs-material site. This server serves that site and answers the questions
+the site can't answer for itself: where each item's real app is running, what
+the gate said about the learner's last attempt, and the lines of the worked
+answer the learner has opened.
 
 A line of the answer only reaches the browser as the reply to a reveal, and
 the server writes the reveal down before it replies. So a line can't be read
@@ -12,21 +18,17 @@ minutes per item, and that kind gets skipped.
 """
 
 import argparse
-import html
 import http.server
 import json
+import mimetypes
 import pathlib
 import threading
+import urllib.parse
 
-from markdown_it import MarkdownIt
-
-from . import progress, runners, subject
+from . import progress, runners, site, subject
 from .environment import Site
 
-WEB = pathlib.Path(__file__).resolve().parent / "web"
 DEFAULT_LOG = pathlib.Path("run") / "reveals.jsonl"
-
-_MARKDOWN = MarkdownIt("commonmark").enable("table")
 
 
 def find_items(subjects):
@@ -35,14 +37,6 @@ def find_items(subjects):
     for each in subjects:
         found.update(each.items())
     return found
-
-
-def find_steps(subjects):
-    """Every step that has a guide, keyed subject/step, in course order."""
-    return {
-        step.name: step.guide
-        for each in subjects for step in each.steps if step.guide
-    }
 
 
 def runner_of(item):
@@ -68,120 +62,8 @@ def worked_lines(item):
     return lines
 
 
-def _shell(title, body):
-    return (
-        "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
-        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
-        f"<title>{html.escape(title)}</title>\n"
-        "<link rel=\"stylesheet\" href=\"/static/page.css\">\n"
-        "</head>\n<body>\n"
-        f"{body}\n"
-        "<script src=\"/static/page.js\"></script>\n"
-        "</body>\n</html>\n"
-    )
-
-
-def task_title(item):
-    for line in (item / "TASK.md").read_text().splitlines():
-        if line.startswith("# "):
-            return line[2:].strip()
-    return item.name
-
-
 def _verdict_word(attempt):
     return "accepted" if attempt["accepted"] else "rejected"
-
-
-def _first_heading(path, fallback):
-    for line in path.read_text().splitlines():
-        if line.startswith("# "):
-            return line[2:].strip()
-    return fallback
-
-
-def _status(attempts, name):
-    last = attempts.last(name)
-    if not last:
-        return ""
-    word = _verdict_word(last)
-    return f" <span class=\"status {word}\">{word}</span>"
-
-
-def _step_label(step):
-    """'03-locators' as 'Step 3, locators', for a step with no guide to name it."""
-    number, _, slug = step.dir.partition("-")
-    label = slug.replace("-", " ")
-    return f"Step {int(number)}, {label}" if number.isdigit() else step.dir
-
-
-def render_index(subjects, attempts):
-    """The course: each subject's steps in order, with their practice items.
-
-    A step with a guide and no item, like the one on just enough TypeScript,
-    still gets a page of its own. A step with items and no guide yet stays on
-    the path, since its items belong there, and says the guide is still owed.
-    An item that no step lists is listed apart. It can still be worked, but it
-    isn't on the path, and mixing it in would hide that.
-    """
-    body = "<main>\n<h1>Orbis</h1>\n"
-    body += "<p class=\"hint\">Each step is a guide, then an item to practice it on.</p>\n"
-    for course in subjects:
-        items = course.items()
-        listed = set()
-        steps = []
-        for step in course.steps:
-            practice = []
-            for item_dir in step.items:
-                name = f"{course.name}/{item_dir}"
-                listed.add(name)
-                if name in items:
-                    practice.append((name, items[name]))
-            links = ", ".join(
-                f"<a href=\"/item/{html.escape(name)}\">{html.escape(task_title(item))}</a>"
-                f"{_status(attempts, name)}"
-                for name, item in practice
-            )
-            if step.guide:
-                title = html.escape(_first_heading(step.guide, step.dir))
-                href = f"/item/{practice[0][0]}" if practice else f"/step/{step.name}"
-                tail = (
-                    f"then practice: {links}" if practice
-                    else "a guide to read, with nothing to practice yet"
-                )
-                steps.append(
-                    f"  <li><a href=\"{html.escape(href)}\">{title}</a>"
-                    f" <span class=\"title\">{tail}</span></li>"
-                )
-            else:
-                steps.append(
-                    f"  <li><span class=\"step\">{html.escape(_step_label(step))}</span>"
-                    f" <span class=\"title\">waiting for a guide, practice: {links}</span></li>"
-                )
-        body += f"<section class=\"subject\" id=\"subject-{html.escape(course.name)}\">\n"
-        body += f"<h2>{html.escape(course.title)}</h2>\n"
-        body += "<ol class=\"course\">\n" + "\n".join(steps) + "\n</ol>\n"
-        waiting = [
-            f"  <li><a href=\"/item/{html.escape(name)}\">{html.escape(task_title(item))}</a>"
-            f" <span class=\"title\">{html.escape(name)}</span>{_status(attempts, name)}</li>"
-            for name, item in items.items() if name not in listed
-        ]
-        if waiting:
-            body += (
-                "<div class=\"waiting\">\n<h3>Practice items no step lists yet</h3>\n"
-                "<p class=\"hint\">These work, but they aren't on the path.</p>\n"
-                "<ul>\n" + "\n".join(waiting) + "\n</ul>\n</div>\n"
-            )
-        body += "</section>\n"
-    return _shell("Orbis", body + "</main>")
-
-
-def render_lesson_page(name, path):
-    """A step's guide with no practice item behind it, on a page of its own."""
-    body = (
-        "<main>\n<p class=\"crumbs\"><a href=\"/\">the course</a></p>\n"
-        f"<section id=\"lesson\">\n{_MARKDOWN.render(path.read_text())}</section>\n</main>"
-    )
-    return _shell(_first_heading(path, name), body)
 
 
 def _from_root(path):
@@ -193,7 +75,7 @@ def _from_root(path):
         return path.as_posix()
 
 
-def render_app(name, item, url):
+def app_part(name, item, url):
     """Where the learner drives the real app while writing tests.
 
     The tests are written against the live page, so it's one click away. Only
@@ -202,147 +84,135 @@ def render_app(name, item, url):
     """
     runner = runner_of(item)
     mine = runner.mine_name(name)
-    rows = "\n".join(
-        f"<tr><td>{html.escape(what)}</td><td><code>{html.escape(command)}</code></td></tr>"
-        for what, command in runner.app_commands(url, mine)
-    )
-    url = html.escape(url)
-    spec = html.escape(mine)
-    workspace = html.escape(_from_root(subject.of_item(item).workspace))
-    return (
-        "<section id=\"app\">\n<h2>The app</h2>\n"
-        f"<p>The real app is running at <a href=\"{url}\" target=\"_blank\">{url}</a>."
-        " Poke at it, watch what changes and when, and write your tests against it.</p>\n"
-        f"<p class=\"hint\">Write your tests in <code>{workspace}/{spec}</code>. In a shell,"
-        f" after <code>source env.sh</code> and <code>cd {workspace}</code>:</p>\n"
-        f"<table>\n{rows}\n</table>\n</section>"
-    )
+    return {
+        "url": url,
+        "mine": mine,
+        "workspace": _from_root(subject.of_item(item).workspace),
+        "commands": [list(row) for row in runner.app_commands(url, mine)],
+    }
 
 
-def render_attempt(name, item, last):
-    """The gate's verdict on the learner's latest file, cell by cell."""
-    runner = runner_of(item)
+def grade_command(name, item):
     workspace = _from_root(subject.of_item(item).workspace)
-    command = (
-        f"uv run python -m orbis.gate attempt {html.escape(_from_root(item))}"
-        f" --candidate {html.escape(workspace)}/{html.escape(runner.mine_name(name))}"
-    )
-    if last is None:
-        return (
-            "<section id=\"attempt\">\n<h2>Your attempt</h2>\n"
-            "<p>No attempt graded yet. Grade one with</p>\n"
-            f"<pre><code>{command}</code></pre>\n</section>"
-        )
-    rows = "\n".join(
-        f"<tr><td>{html.escape(c['environment'])}</td><td>{html.escape(c['cell'])}</td>"
-        + "<td>" + "<br>".join(
-            f"<code>{html.escape(runner.trace_command(t))}</code>"
-            for t in c.get("traces", [])
-        ) + "</td></tr>"
-        for c in last["cells"]
-    )
-    word = _verdict_word(last)
     return (
-        "<section id=\"attempt\">\n<h2>Your attempt</h2>\n"
-        f"<p>The gate <span class=\"verdict {word}\">{word}</span>"
-        f" <code>{html.escape(last['candidate'])}</code> at {html.escape(last['at'])}.</p>\n"
-        "<table>\n<tr><th>environment</th><th>cell</th><th>what your tests saw</th></tr>\n"
-        f"{rows}\n</table>\n"
-        f"<p class=\"hint\">Grade another with</p>\n<pre><code>{command}</code></pre>\n"
-        "</section>"
+        f"uv run python -m orbis.gate attempt {_from_root(item)}"
+        f" --candidate {workspace}/{runner_of(item).mine_name(name)}"
     )
 
 
-def guide_of(item):
-    """The guide of the step an item practices, or None if it has none yet."""
-    step = subject.of_item(item).step_of(item.name)
-    return step.guide if step else None
+def attempt_part(item, last):
+    """The gate's verdict on the learner's latest file, cell by cell."""
+    if last is None:
+        return None
+    runner = runner_of(item)
+    stem = pathlib.Path(last["candidate"]).name.split(".", 1)[0] + "-"
+
+    def trace(path):
+        # Playwright names a trace's folder after the spec and the test, so
+        # the folder is the test's name once the spec's part is cut off. The
+        # full command is long, so the page tucks it under that name.
+        test = pathlib.Path(path).parent.name.removeprefix(stem).replace("-", " ")
+        return {"test": test, "command": runner.trace_command(path)}
+
+    return {
+        "word": _verdict_word(last),
+        "candidate": _from_root(last["candidate"]),
+        "at": last["at"],
+        "cells": [
+            {
+                "environment": c["environment"],
+                "cell": c["cell"],
+                "traces": [trace(t) for t in c.get("traces", [])],
+            }
+            for c in last["cells"]
+        ],
+    }
 
 
-def render_lesson(item):
-    path = guide_of(item)
-    if path is None:
-        return ""
-    return f"<section id=\"lesson\">\n{_MARKDOWN.render(path.read_text())}</section>\n"
+def answer_part(item, revealed):
+    """The worked answer, with text only on the lines already revealed.
 
-
-def _demote(rendered):
-    """Push every heading down a level, so the lesson keeps the page's h1."""
-    for level in (5, 4, 3, 2, 1):
-        rendered = rendered.replace(f"<h{level}>", f"<h{level + 1}>")
-        rendered = rendered.replace(f"</h{level}>", f"</h{level + 1}>")
-    return rendered
-
-
-def render_item(name, item, revealed, last=None, app_url=None):
-    task = _MARKDOWN.render((item / "TASK.md").read_text())
-    if guide_of(item):
-        task = "<p class=\"step\">Practice</p>\n" + _demote(task)
-    rows = []
+    A hidden line goes out as its number and margin, so its text is never in
+    the browser until a reveal brings it.
+    """
+    lines = []
     for number, text, margin in worked_lines(item):
         if not text.strip():
-            rows.append("<li class=\"blank\"></li>")
-            continue
-        note = f"<span class=\"margin\">{html.escape(margin)}</span>"
-        if number in revealed:
-            body = f"<code>{html.escape(text)}</code>"
-            rows.append(f"<li class=\"line\" id=\"line-{number}\">{note}{body}</li>")
+            lines.append({"number": number, "blank": True})
+        elif number in revealed:
+            lines.append({"number": number, "margin": margin, "text": text})
         else:
-            button = f"<button type=\"button\" data-line=\"{number}\">reveal</button>"
-            rows.append(
-                f"<li class=\"line hidden\" id=\"line-{number}\">{note}{button}</li>"
-            )
-    body = (
-        f"<main data-item=\"{html.escape(name)}\">\n"
-        "<p class=\"crumbs\"><a href=\"/\">the course</a></p>\n"
-        f"{render_lesson(item)}"
-        f"<section id=\"task\">\n{task}</section>\n"
-        f"{render_app(name, item, app_url) if app_url else ''}\n"
-        f"{render_attempt(name, item, last)}\n"
-        "<section id=\"answer\">\n<h2>The worked answer</h2>\n"
-        "<p class=\"hint\">Write your own attempt first. Each line opens on its own,"
-        " and the margin says what kind of line it is.</p>\n"
-        "<ol class=\"lines\">\n" + "\n".join(rows) + "\n</ol>\n</section>\n</main>"
-    )
-    return _shell(task_title(item), body)
+            lines.append({"number": number, "margin": margin})
+    return lines
 
 
-def _handler(subjects, items, log, attempts, apps, steps):
+def practice(name, item, revealed, last, app_url):
+    """Everything live on an item's practice page, as orbis.js draws it."""
+    return {
+        "item": name,
+        "app": app_part(name, item, app_url),
+        "attempt": attempt_part(item, last),
+        "grade": grade_command(name, item),
+        "lines": answer_part(item, revealed),
+    }
+
+
+def _handler(items, log, attempts, apps, site_dir):
+    site_dir = pathlib.Path(site_dir).resolve()
+
     class Handler(http.server.BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
             pass
 
-        def _send(self, status, kind, payload):
+        def _send(self, status, kind, payload, headers=()):
             data = payload.encode() if isinstance(payload, str) else payload
             self.send_response(status)
             self.send_header("Content-Type", kind)
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Cache-Control", "no-store")
+            for key, value in headers:
+                self.send_header(key, value)
             self.end_headers()
             self.wfile.write(data)
 
+        def _json(self, status, value):
+            self._send(status, "application/json", json.dumps(value))
+
+        def _static(self, path):
+            """A file of the built site, or its 404 page."""
+            target = (site_dir / path.lstrip("/")).resolve()
+            if not target.is_relative_to(site_dir):
+                return self._send(404, "text/plain", "not found")
+            if target.is_dir():
+                if not path.endswith("/"):
+                    return self._send(301, "text/plain", "", [("Location", path + "/")])
+                target = target / "index.html"
+            if not target.is_file():
+                missing = site_dir / "404.html"
+                if missing.is_file():
+                    return self._send(404, "text/html; charset=utf-8", missing.read_bytes())
+                return self._send(404, "text/plain", "not found")
+            kind = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+            if kind.startswith("text/") or kind in ("application/javascript", "application/json"):
+                kind += "; charset=utf-8"
+            self._send(200, kind, target.read_bytes())
+
         def do_GET(self):
-            path = self.path.split("?", 1)[0]
-            if path == "/":
-                page = render_index(subjects, attempts)
-                return self._send(200, "text/html; charset=utf-8", page)
-            if path.startswith("/step/"):
-                name = path[len("/step/"):]
-                if name in steps:
-                    page = render_lesson_page(name, steps[name])
-                    return self._send(200, "text/html; charset=utf-8", page)
-            if path.startswith("/item/"):
-                name = path[len("/item/"):]
-                if name in items:
-                    page = render_item(
-                        name, items[name], log.revealed(name), attempts.last(name),
-                        apps[name].base_url,
-                    )
-                    return self._send(200, "text/html; charset=utf-8", page)
-            if path in ("/static/page.css", "/static/page.js"):
-                kind = "text/css" if path.endswith(".css") else "text/javascript"
-                return self._send(200, kind, (WEB / path.rsplit("/", 1)[1]).read_bytes())
-            self._send(404, "text/plain", "not found")
+            path = urllib.parse.unquote(self.path.split("?", 1)[0])
+            if path.startswith("/api/practice/"):
+                name = path[len("/api/practice/"):]
+                if name not in items:
+                    return self._json(404, {"error": "no such item"})
+                return self._json(200, practice(
+                    name, items[name], log.revealed(name), attempts.last(name),
+                    apps[name].base_url,
+                ))
+            if path == "/api/status":
+                return self._json(200, {
+                    name: _verdict_word(last)
+                    for name in items if (last := attempts.last(name))
+                })
+            return self._static(path)
 
         def do_POST(self):
             if self.path != "/reveal":
@@ -368,7 +238,10 @@ def _handler(subjects, items, log, attempts, apps, steps):
 
 
 class Server:
-    """Serve the pages on a loopback port and record reveals to a log file.
+    """Serve the site on a loopback port and record reveals to a log file.
+
+    The site is built first, or rebuilt when what it's built from has changed,
+    so the pages served are never older than the subjects tree.
 
     The attempts log sits beside the reveals log unless told otherwise, which
     is where `gate attempt` writes by default.
@@ -380,9 +253,11 @@ class Server:
     from one sitting to the next.
     """
 
-    def __init__(self, subjects_root, log_path, port=0, attempts_path=None):
+    def __init__(self, subjects_root, log_path, port=0, attempts_path=None,
+                 build_dir=site.BUILD):
         self.subjects = subject.find(subjects_root)
         self.items = find_items(self.subjects)
+        self.site_dir = site.build(subjects_root, build_dir)
         self.log = pathlib.Path(log_path)
         attempts = pathlib.Path(attempts_path or self.log.parent / "attempts.jsonl")
         self.apps = {
@@ -390,8 +265,8 @@ class Server:
             for index, (name, item) in enumerate(self.items.items())
         }
         handler = _handler(
-            self.subjects, self.items, progress.RevealLog(self.log),
-            progress.AttemptLog(attempts), self.apps, find_steps(self.subjects),
+            self.items, progress.RevealLog(self.log), progress.AttemptLog(attempts),
+            self.apps, self.site_dir,
         )
         self._server = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
         self.port = self._server.server_address[1]
@@ -423,8 +298,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     with Server(args.subjects, args.log, args.port) as running:
         print(f"Orbis at {running.base_url}  (reveals go to {args.log})")
+        print(f"  site built in {running.site_dir}")
         for name, app in running.apps.items():
-            print(f"  {name:<32} {app.base_url}")
+            print(f"  {name:<32} {app.base_url}", flush=True)
         try:
             threading.Event().wait()
         except KeyboardInterrupt:
