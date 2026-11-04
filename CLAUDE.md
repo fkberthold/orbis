@@ -413,8 +413,11 @@ and because three capture surfaces in the predecessor project were specified and
 left empty when they asked the learner to record something. A page records as a
 side effect of reading.
 
-**mkdocs-material runs through `uvx`**, measured 2026-11-04. It isn't
-installed into the system and doesn't need to be.
+**mkdocs-material is a uv dependency**, pinned at 9.8.0 in `pyproject.toml`,
+so `uv sync` brings it and nothing goes into the system. `orbis.site` builds
+the reading pages into `build/`, which is gitignored, and `orbis.page` runs
+that build before it serves. Material for MkDocs announces its end of life on
+2027-05-05 when it builds, and names Zensical as its successor.
 
 ## What this does not solve, stated so nobody rediscovers it
 

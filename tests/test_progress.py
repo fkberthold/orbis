@@ -15,6 +15,7 @@ from orbis import page as orbis_page
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 ITEM = "playwright/01-seat-desk"
+PRACTICE = "/playwright/02-writing-tests/01-seat-desk/"
 ITEM_DIR = ROOT / "subjects" / "playwright" / "items" / "01-seat-desk"
 
 
@@ -24,8 +25,9 @@ def run_dir(tmp_path):
 
 
 @pytest.fixture
-def server(run_dir):
-    with orbis_page.Server(ROOT / "subjects", run_dir / "reveals.jsonl") as running:
+def server(run_dir, build_dir):
+    log = run_dir / "reveals.jsonl"
+    with orbis_page.Server(ROOT / "subjects", log, build_dir=build_dir) as running:
         yield running
 
 
@@ -38,14 +40,14 @@ def test_the_page_shows_the_last_attempt(page: Page, server, run_dir) -> None:
     attempts.record(ITEM, "first.py", False, cells([("real", "silent"), ("m1", "silent")]))
     attempts.record(ITEM, "second.py", True, cells([("real", "silent"), ("m1", "catches")]))
 
-    page.goto(server.base_url + "/item/" + ITEM)
-    expect(page.locator("#attempt .verdict")).to_have_text("accepted")
+    page.goto(server.base_url + PRACTICE)
+    expect(page.locator("#attempt .orbis-verdict")).to_have_text("accepted")
     expect(page.locator("#attempt")).to_contain_text("second.py")
     expect(page.locator("#attempt tr", has_text="m1")).to_contain_text("catches")
 
 
 def test_no_attempt_says_so(page: Page, server) -> None:
-    page.goto(server.base_url + "/item/" + ITEM)
+    page.goto(server.base_url + PRACTICE)
     expect(page.locator("#attempt")).to_contain_text("No attempt graded yet")
     expect(page.locator("#attempt code")).to_contain_text(
         "orbis.gate attempt subjects/playwright/items/01-seat-desk"
@@ -56,8 +58,8 @@ def test_no_attempt_says_so(page: Page, server) -> None:
 def test_the_index_shows_where_each_item_stands(page: Page, server, run_dir) -> None:
     attempts = progress.AttemptLog(run_dir / "attempts.jsonl")
     attempts.record(ITEM, "mine.py", False, cells([("real", "silent")]))
-    page.goto(server.base_url + "/")
-    step = page.locator(".course > li", has=page.locator(f"a[href='/item/{ITEM}']"))
+    page.goto(server.base_url + "/playwright/")
+    step = page.locator(".orbis-course li", has=page.locator("a[href*='01-seat-desk']"))
     expect(step).to_contain_text("rejected")
 
 

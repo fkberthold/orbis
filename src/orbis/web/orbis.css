@@ -1,0 +1,144 @@
+/* Orbis's own pieces on top of mkdocs-material. Every color is one of the
+   theme's variables, or is set once per scheme below, so both the light and
+   the dark palette stay readable. */
+
+:root,
+[data-md-color-scheme="default"] {
+  --orbis-accepted: #1b6e3f;
+  --orbis-rejected: #a3341f;
+}
+
+[data-md-color-scheme="slate"] {
+  --orbis-accepted: #6fd39a;
+  --orbis-rejected: #ff8a73;
+}
+
+.orbis-wait {
+  color: var(--md-default-fg-color--light);
+  font-style: italic;
+}
+
+.md-typeset .lines {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.md-typeset .lines li {
+  display: grid;
+  grid-template-columns: 12rem 1fr;
+  gap: 1rem;
+  align-items: baseline;
+  min-height: 1.6rem;
+  margin: 0;
+}
+
+.md-typeset .lines li.blank {
+  min-height: 0.8rem;
+}
+
+.md-typeset .lines .margin {
+  color: var(--md-default-fg-color--light);
+  font-size: 0.75rem;
+  text-align: right;
+}
+
+/* Wrapped rather than scrolled. A line a few characters too wide got a
+   scrollbar as tall as the line, and the scrollbar hid the text. */
+.md-typeset .lines code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.md-typeset .lines button {
+  justify-self: start;
+  font: inherit;
+  font-size: 0.7rem;
+  color: var(--md-accent-fg-color);
+  background: none;
+  border: 1px dashed var(--md-default-fg-color--lighter);
+  border-radius: 0.2rem;
+  padding: 0 0.6rem;
+  cursor: pointer;
+}
+
+.md-typeset .lines button:hover {
+  border-style: solid;
+}
+
+@media (max-width: 40rem) {
+  .md-typeset .lines li {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .md-typeset .lines .margin {
+    text-align: left;
+  }
+}
+
+.orbis-verdict,
+.orbis-status {
+  font-weight: bold;
+}
+
+.orbis-status:not(:empty) {
+  margin-left: 0.3rem;
+  font-size: 0.8em;
+}
+
+.accepted {
+  color: var(--orbis-accepted);
+}
+
+.rejected {
+  color: var(--orbis-rejected);
+}
+
+.md-typeset .orbis-trace summary {
+  cursor: pointer;
+  color: var(--md-typeset-a-color);
+}
+
+.md-typeset .orbis-trace pre {
+  margin: 0.2rem 0 0.4rem;
+}
+
+.md-typeset .orbis-trace pre code {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.md-typeset .orbis-cell {
+  font-family: var(--md-code-font-family);
+}
+
+/* The theme draws every details element as a collapsible admonition. In a
+   table cell that's a box per test, so this one is drawn as a plain line. */
+.md-typeset details.orbis-trace {
+  border: none;
+  box-shadow: none;
+  background: none;
+  margin: 0;
+  padding: 0;
+  font-size: inherit;
+}
+
+.md-typeset details.orbis-trace > summary {
+  background: none;
+  border: none;
+  padding: 0 0 0 1rem;
+  font-weight: normal;
+}
+
+.md-typeset details.orbis-trace > summary::before {
+  display: none;
+}
+
+.md-typeset details.orbis-trace > summary::after {
+  left: 0;
+  right: auto;
+  top: 0.15rem;
+  width: 0.8rem;
+  height: 0.8rem;
+}

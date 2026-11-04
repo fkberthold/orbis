@@ -38,12 +38,15 @@ canonical_commands:
   # project is built on.
   test: scripts/test
   lint: scripts/lint
+  # The reading site, built with mkdocs-material into build/. It's skipped
+  # when the assembled docs haven't changed since the last build.
+  build: "uv run python -m orbis.site"
+  # Builds the site if it's stale, then serves it with the live parts.
+  dev: "uv run python -m orbis.page"
   # EMPTY ON PURPOSE, and an empty verb here means no honest command exists
   # yet rather than that nobody got round to it. The predecessor project kept
   # every verb empty for a week for exactly this reason: naming a command that
   # fails by design asserts a canonical command that lies.
-  build: ""
-  dev: ""
   deploy: ""
   gen: ""
 
@@ -68,8 +71,7 @@ default.
 widening an ignore list. Fix it, or justify that one site with a comment above
 the directive and say why.
 
-**The absent verbs are the honest state of a one-day-old repo.** There is no
-build step because the runtime is Python run in place. There is no `dev` server
-because the page does not exist yet. There is no `deploy` because nothing is
-deployed. Each becomes a real command the day something honest can fill it, and
+**The absent verbs are the honest state of the repo.** `build` and `dev` got
+filled on 2026-11-04, when the reading pages moved to mkdocs-material. There's
+no `deploy` because nothing is deployed. Each becomes a real command the day something honest can fill it, and
 not before.

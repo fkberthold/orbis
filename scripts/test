@@ -173,6 +173,8 @@ done
 
 # ---------------------------------------------------------------------------
 # The page. Its tests drive it in a browser, so they live in this tier too.
+# They build the mkdocs site once into a temp dir, so a broken build fails
+# here, and they never touch the build/ the learner reads from.
 # ---------------------------------------------------------------------------
 echo
 echo "the page:"

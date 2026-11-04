@@ -114,11 +114,21 @@ To work through the course, start the page and open the address it prints:
 uv run python -m orbis.page    # the course at http://127.0.0.1:8765
 ```
 
-The front page is the course, a step at a time in the order `subject.toml`
-gives, each guide followed by an item to practice it on. A step whose guide
-isn't written yet still lists its item and says the guide is owed.
+The reading pages are a mkdocs-material site, with a tab per subject, a section
+per step in the order `subject.toml` gives, search, and a light and a dark
+theme. `orbis.page` builds it into `build/` before it serves, and the build
+reruns only when the assembled docs have changed. `uv run python -m orbis.site`
+builds it on its own. A subject with a `CURRICULUM.md` and no `subject.toml`
+yet gets a tab with just its curriculum.
 
-A step's page is the lesson, then the task, then the real app. Each item's app
+Each subject's first page is the course, each guide followed by an item to
+practice it on. A step whose guide isn't written yet still lists its item and
+says the guide is owed.
+
+A step's guide is a page of its own. Its practice page is the task, then the
+real app, then your last verdict, then the worked answer. Those last three come
+from the server while it runs, so they're blank in a site opened from disk.
+Each item's app
 runs on a port of its own (8766 and up), because the tests call
 `page.goto("/")` and that needs the app at the root. The page lists the
 codegen, headed and inspector commands for that address. Only the real app is
@@ -137,9 +147,9 @@ uv run python -m orbis.gate attempt subjects/playwright/items/01-seat-desk \
 ```
 
 It runs your file against the real app and every broken copy, and appends
-the verdict to `run/attempts.jsonl`. The item page shows the latest verdict,
-cell by cell. The traces from that run stay under `run/traces/`, and the page
-lists a `show-trace` command beside each cell. The verdict is the only thing
+the verdict to `run/attempts.jsonl`. The practice page shows the latest
+verdict, cell by cell. The traces from that run stay under `run/traces/`, and
+the page lists a `show-trace` command under each test's name. The verdict is the only thing
 stored as a fact. Nothing turns it into a score.
 
 `filter` reports rather than judging. It groups the caught patches by vector,
