@@ -5,17 +5,40 @@ reference that passes the real app and fails every mutation could still be
 resting on a single assertion that happens to break three ways, in which case
 two of the mutations are teaching the same thing. Comparing the per-test
 vectors is what catches that.
+
+A judged item adds two things, because its oracle is a model whose scores
+move between runs. Every candidate runs REPEATS times against every
+environment and has to land in the same cell with the same vector each time,
+or the cell is did-not-run. And the reference gets a fourth condition, G4:
+every judged score it got has to sit at least MARGIN from its threshold, on
+the side its verdict says. A reference that passes a break by a hair isn't
+evidence, even when it happened to pass three times.
 """
 
 import argparse
+import concurrent.futures
 import pathlib
 import shutil
 import sys
+import tomllib
 
 from . import progress, runners, subject, verdict
 
 GATE_PASS = "OK"
 GATE_FAIL = "FAIL"
+
+# Frank, 2026-11-06: three repeats, and the same cell all three times.
+REPEATS = 3
+# Measured 2026-11-06 on 02-refund-policy with gpt-5.4-mini: every judged
+# score was 0.0 or 1.0 over three runs, so the reference cleared 0.75 by 0.25
+# on a pass and by 0.75 on a break. On gpt-5.4-nano a single score moved by
+# up to 0.8 between runs. 0.15 is the gap the first nano measurement found
+# between its worst good answer (0.9) and its best broken one (0.6), so a
+# judge no steadier than that fails G4 rather than passing by luck.
+MARGIN = 0.15
+# Judged runs wait on the network rather than the CPU, so they run side by
+# side. Each one is a separate process with its own stage.
+JUDGED_WORKERS = 8
 
 
 class Item:
@@ -41,6 +64,11 @@ class Item:
         self.mutations = sorted((self.root / "mutations").glob("*.patch"))
         self.variants = sorted((self.root / "variants").glob("*.patch"))
         self.reference = self._one_file(self.root / "reference")
+        # item.toml is optional, and today it says one thing: whether a model
+        # judges this item, which is what turns on the repeats and G4.
+        settings = self.root / "item.toml"
+        data = tomllib.loads(settings.read_text()) if settings.is_file() else {}
+        self.judged = bool(data.get("judged", False))
 
     def _one_file(self, directory):
         found = self.runner.sources(directory)
@@ -64,25 +92,79 @@ def grade(item, candidate, prepared, keep=None):
     """Run one candidate across every environment and return the runs.
 
     With keep, each environment's run directory stays under keep/<name>, which
-    is where its traces end up.
+    is where its traces end up. A judged item's repeats each keep their own,
+    under keep/<name>/<repeat>.
     """
-    def kept(name):
-        return keep / name if keep else None
-
     workspace = item.subject.workspace
-    reals = [(None, runners.REAL)]
-    reals += [(patch, f"{runners.REAL}+{patch.stem}") for patch in item.variants]
-    runs = [
-        item.runner.run(candidate, item.app, patch, name, workspace,
-                        prepared, keep_dir=kept(name))
-        for patch, name in reals
+    environments = [(None, runners.REAL)]
+    environments += [
+        (patch, f"{runners.REAL}+{patch.stem}") for patch in item.variants
     ]
-    for patch in item.mutations:
-        runs.append(
-            item.runner.run(candidate, item.app, patch, patch.stem, workspace,
-                            prepared, keep_dir=kept(patch.stem))
-        )
-    return runs
+    environments += [(patch, patch.stem) for patch in item.mutations]
+
+    if not item.judged:
+        return [
+            item.runner.run(candidate, item.app, patch, name, workspace,
+                            prepared, keep_dir=keep / name if keep else None)
+            for patch, name in environments
+        ]
+
+    def one(patch, name, repeat):
+        kept = keep / name / str(repeat) if keep else None
+        return item.runner.run(candidate, item.app, patch, name, workspace,
+                               prepared, keep_dir=kept, judged=True)
+
+    with concurrent.futures.ThreadPoolExecutor(JUDGED_WORKERS) as pool:
+        pending = [
+            [pool.submit(one, patch, name, repeat) for repeat in range(1, REPEATS + 1)]
+            for patch, name in environments
+        ]
+        return [merge([future.result() for future in futures]) for futures in pending]
+
+
+def merge(repeats):
+    """One run from a judged environment's repeats, or did-not-run if they differ.
+
+    A verdict that changes between runs of the same file against the same app
+    established nothing, whichever way it went. So the repeats have to agree
+    on the cell and on every test's outcome, and the merged run keeps every
+    repeat's score so the margin can be checked across all of them.
+    """
+    first = repeats[0]
+    tests = []
+    for outcome in first.tests:
+        scores = [
+            score
+            for run in repeats
+            for other in run.tests if other.name == outcome.name
+            for score in other.scores
+        ]
+        tests.append(runners.TestOutcome(
+            outcome.name, outcome.outcome, outcome.message, scores, outcome.threshold
+        ))
+    # Names aren't compared. A file that won't collect is reported under its
+    # stage's directory, which is new for every run, so its name never
+    # matches. The vector is in name order already, so it's enough.
+    agreed = all(
+        run.cell == first.cell and run.vector == first.vector for run in repeats
+    )
+    if agreed:
+        note = f"{first.note}, the same in {len(repeats)} of {len(repeats)} runs"
+        return runners.Run(first.environment, first.cell, tests, first.expects, note)
+    seen = ", ".join(
+        f"run {n} {run.cell} ({run.vector_text})" for n, run in enumerate(repeats, 1)
+    )
+    flipped = sorted({
+        outcome.name
+        for run in repeats
+        for outcome, other in zip(run.tests, first.tests)
+        if outcome.outcome != other.outcome
+    })
+    note = f"the {len(repeats)} runs disagree: {seen}"
+    if flipped:
+        note += ". Flipped: " + ", ".join(flipped)
+    return runners.Run(first.environment, verdict.DID_NOT_RUN, tests,
+                       first.expects, note)
 
 
 def report(item, candidate, runs):
@@ -110,6 +192,20 @@ def report(item, candidate, runs):
     if names:
         print("  vector order: " + ", ".join(names))
         print()
+    if any(test.scores for run in runs for test in run.tests):
+        # In vector order, one column per test. A test a judge didn't score
+        # shows as a dash, and a score that moved shows its lowest and highest.
+        print("  judged scores over the repeats, in vector order:")
+        for run in runs:
+            cells = []
+            for test in run.tests:
+                if not test.scores:
+                    cells.append("-")
+                    continue
+                low, high = min(test.scores), max(test.scores)
+                cells.append(f"{low:.2f}" if low == high else f"{low:.2f}-{high:.2f}")
+            print(f"  {run.environment:<{width}}{' '.join(cells)}")
+        print()
 
 
 def split(runs):
@@ -118,8 +214,24 @@ def split(runs):
     return reals, [run for run in runs if not runners.is_real(run.environment)]
 
 
-def conditions(runs, check_vectors):
-    """Return a list of (label, ok) for each gate condition."""
+def clears_margin(test, margin=MARGIN):
+    """Whether every score a judged test got sits margin clear of its line.
+
+    A pass has to be at least threshold + margin and a fail at most
+    threshold - margin, in every repeat. The small slack is for float sums
+    like 0.75 + 0.15, which land a hair under 0.9.
+    """
+    slack = 1e-9
+    if test.outcome == verdict.PASS:
+        return all(s >= test.threshold + margin - slack for s in test.scores)
+    return all(s <= test.threshold - margin + slack for s in test.scores)
+
+
+def conditions(runs, check_vectors, judged=False):
+    """Return a list of (label, ok) for each gate condition.
+
+    judged adds G4, and it's only asked of the reference, alongside G3.
+    """
     reals, mutants = split(runs)
     results = [
         ("G1 the candidate does not object to the real app",
@@ -133,15 +245,24 @@ def conditions(runs, check_vectors):
             ("G3 no two mutations share a per-test vector",
              len(set(vectors)) == len(vectors)),
         )
+    if check_vectors and judged:
+        # Every judged score, on the real apps and on the breaks alike. The
+        # ones a break left alone have to clear the line as well as the
+        # real app's do, or a break could be caught by luck on another test.
+        scored = [test for run in runs for test in run.tests if test.scores]
+        results.append(
+            (f"G4 every judged score is {MARGIN:.2f} clear of its threshold",
+             bool(scored) and all(clears_margin(test) for test in scored)),
+        )
     return results
 
 
 def run_gate(item, candidate, prepared, check_vectors, keep=None):
     runs = grade(item, candidate, prepared, keep)
     report(item, candidate, runs)
-    results = conditions(runs, check_vectors)
+    results = conditions(runs, check_vectors, item.judged)
     for label, ok in results:
-        print(f"  {label:<52}{GATE_PASS if ok else GATE_FAIL}")
+        print(f"  {label:<58}{GATE_PASS if ok else GATE_FAIL}")
     print()
     accepted = all(ok for _, ok in results)
     return accepted, runs
@@ -157,7 +278,16 @@ def command_gate(args):
     is_reference = candidate == item.reference
     accepted, _ = run_gate(item, candidate, item.runner.prepare(), is_reference)
     print(f"GATE {GATE_PASS if accepted else GATE_FAIL}")
+    judge_line(item)
     return 0 if accepted else 1
+
+
+def judge_line(item):
+    """What the judge was asked for in this process, when anything was judged."""
+    used = getattr(item.runner, "judge_used", None)
+    summary = used() if used else None
+    if summary:
+        print(f"JUDGE {summary}")
 
 
 def command_attempt(args):
@@ -191,6 +321,7 @@ def command_attempt(args):
     ]
     progress.AttemptLog(args.attempts).record(name, candidate, accepted, cells)
     print(f"ATTEMPT {'accepted' if accepted else 'rejected'}, written to {args.attempts}")
+    judge_line(item)
     return 0 if accepted else 1
 
 
@@ -225,6 +356,7 @@ def command_selfcheck(args):
         if not ok:
             failures.append(candidate.name)
 
+    judge_line(item)
     if failures:
         print("SELFCHECK FAIL: " + ", ".join(failures))
         return 1

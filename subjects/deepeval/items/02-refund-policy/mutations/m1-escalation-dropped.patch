@@ -1,0 +1,18 @@
+--- a/refund_policy.py
++++ b/refund_policy.py
+@@ -41,11 +41,10 @@
+         "understanding, and let me know if there's anything else I can "
+         "help with.",
+     "My $650 sofa arrived with a torn cushion and I want a refund.":
+-        "I'm really sorry the sofa arrived damaged. Because it arrived "
+-        "damaged and the purchase is over $200, I've passed your refund "
+-        "request to a support specialist rather than deciding it here. A "
+-        "specialist will review it within 2 business days and get back to"
+-        " you.",
++        "I'm really sorry the sofa arrived damaged. I've approved a full "
++        "refund of $650, and it will go back to your original payment "
++        "method within 5 to 7 business days after the sofa reaches our "
++        "warehouse.",
+     "I bought a recipe e-book and already downloaded it, but I don't "
+     "like it. Can I get a refund?":
+         "Thanks for asking, and I'm sorry the e-book wasn't what you "

@@ -1,0 +1,15 @@
+--- a/refund_policy.py
++++ b/refund_policy.py
+@@ -49,9 +49,9 @@
+     "I bought a recipe e-book and already downloaded it, but I don't "
+     "like it. Can I get a refund?":
+         "Thanks for asking, and I'm sorry the e-book wasn't what you "
+-        "hoped for. Unfortunately, digital downloads can't be refunded "
+-        "once they've been downloaded, so I'm not able to refund this "
+-        "one.",
++        "hoped for. No problem, I've issued a full refund for it, and "
++        "you'll see it on your original payment method within 5 to 7 "
++        "business days.",
+ }
+ 
+ QUESTIONS = tuple(RECORDED)

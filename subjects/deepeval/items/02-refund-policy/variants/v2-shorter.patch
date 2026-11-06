@@ -1,0 +1,49 @@
+--- a/refund_policy.py
++++ b/refund_policy.py
+@@ -28,30 +28,27 @@
+ RECORDED = {
+     "I bought a desk lamp 10 days ago and never took it out of the "
+     "box. Can I get my money back?":
+-        "Thanks for reaching out! Yes, you can. Since the lamp is unused,"
+-        " still in its original box, and was delivered within the last 30"
+-        " days, it qualifies for a full refund. Once it reaches our "
+-        "warehouse, the refund goes back to your original payment method "
+-        "within 5 to 7 business days.",
++        "Happy to help. Yes, you can get a full refund. Items returned "
++        "unused and in their original packaging within 30 days of "
++        "delivery qualify, and your lamp does. After it reaches our "
++        "warehouse, expect the refund on your original payment method in "
++        "5 to 7 business days.",
+     "My blender was delivered 45 days ago and it's still sealed. Can "
+     "I still return it for a refund?":
+-        "I'm sorry, but I can't offer a refund on the blender. Our policy"
+-        " allows refunds within 30 days of delivery, and it's been 45 "
+-        "days, so the return window has closed. Thank you for "
+-        "understanding, and let me know if there's anything else I can "
+-        "help with.",
++        "I'm sorry, but a refund isn't possible here. Our policy covers "
++        "returns within 30 days of delivery, and 45 days have passed "
++        "since the blender arrived. Even though it's still sealed, the "
++        "window has closed. Thanks for understanding.",
+     "My $650 sofa arrived with a torn cushion and I want a refund.":
+-        "I'm really sorry the sofa arrived damaged. Because it arrived "
+-        "damaged and the purchase is over $200, I've passed your refund "
+-        "request to a support specialist rather than deciding it here. A "
+-        "specialist will review it within 2 business days and get back to"
+-        " you.",
++        "That's frustrating, and I'm sorry it arrived that way. Refund "
++        "requests for damaged items or purchases over $200 go to a "
++        "support specialist, so I've sent yours on. They'll review it "
++        "within 2 business days.",
+     "I bought a recipe e-book and already downloaded it, but I don't "
+     "like it. Can I get a refund?":
+-        "Thanks for asking, and I'm sorry the e-book wasn't what you "
+-        "hoped for. Unfortunately, digital downloads can't be refunded "
+-        "once they've been downloaded, so I'm not able to refund this "
+-        "one.",
++        "Thanks for letting me know. I'm afraid digital downloads aren't "
++        "refundable after they've been downloaded, so I can't refund the "
++        "e-book. I'm sorry about that.",
+ }
+ 
+ QUESTIONS = tuple(RECORDED)

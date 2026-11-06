@@ -1,0 +1,4 @@
+# A model judges this item, so the gate runs every candidate three times
+# against every environment and needs the same cell each time, and the
+# reference's judged scores have to clear the threshold by a margin.
+judged = true
