@@ -25,7 +25,7 @@ import xml.etree.ElementTree as ET
 
 from .. import verdict
 from ..environment import MutationError, Site, materialize
-from . import Run, TestOutcome
+from . import Run, TestOutcome, classify
 from . import playwright_trace as tracing
 
 RUN_TIMEOUT_S = 300
@@ -103,19 +103,6 @@ def _first_error(output):
         if "Error" in line:
             return line.strip()[:200]
     return ""
-
-
-def _classify(returncode, outcomes, expects, asserted_in_source):
-    if outcomes is None or not outcomes:
-        return verdict.DID_NOT_RUN, f"the test run exited {returncode} with no usable report"
-    if any(outcome.outcome == verdict.ERROR for outcome in outcomes):
-        return verdict.DID_NOT_RUN, "a test errored rather than reaching a verdict"
-    if any(outcome.outcome == verdict.FAIL for outcome in outcomes):
-        failed = [o.name for o in outcomes if o.outcome == verdict.FAIL]
-        return verdict.CATCHES, "failed: " + ", ".join(failed)
-    if expects == 0 and not asserted_in_source:
-        return verdict.VACUOUS, "passed without asserting anything"
-    return verdict.SILENT, f"passed, {expects} assertion(s) executed"
 
 
 @contextlib.contextmanager
@@ -205,7 +192,7 @@ def run(candidate, app_dir, patch, environment_name, workspace, prepared,
         outcomes = _parse_junit(report)
         expects = tracing.expect_calls_under(output)
         asserted = tracing.has_assert_statement(candidate)
-        cell, note = _classify(returncode, outcomes, expects, asserted)
+        cell, note = classify(returncode, outcomes, expects, asserted)
         if cell == verdict.DID_NOT_RUN and not outcomes:
             # Name the cause. A file that won't load is the commonest way to
             # get here, and the bare exit code says nothing about which line.
@@ -269,8 +256,19 @@ def margin_for(text):
     return ""
 
 
-def app_commands(url, mine):
-    """What the learner runs against the live app, as (what it's for, command)."""
+def app_lead():
+    """The words either side of the app's link, at the top of the app panel."""
+    return (
+        "The real app is running at ",
+        ". Poke at it, watch what changes and when, and write your tests against it.",
+    )
+
+
+def app_commands(url, mine, app, workspace):
+    """What the learner runs against the live app, as (what it's for, command).
+
+    The app and workspace go unused, since the app is reached by its URL.
+    """
     run_mine = f"BASE_URL={url} npx playwright test {mine}"
     return [
         ("record clicks as test code, and pick up selectors",

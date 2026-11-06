@@ -21,6 +21,12 @@ GATE_FAIL = "FAIL"
 class Item:
     """One authored item: a real app, its mutations, and its reference.
 
+    The real app can come in several variants, each a patch under variants/
+    that changes only what the rules allow, such as the order of a JSON
+    object's keys. Every variant is a real environment, and G1 holds the
+    candidate to all of them. That's what fails a test pinned to one wording
+    the rules never asked for. An item with no variants/ has one real app.
+
     It lives at subjects/<subject>/items/<item>, so the subject it belongs to,
     and the workspace its candidates run in, are two levels up. The subject
     names the runner, which is what knows what a candidate file looks like.
@@ -33,6 +39,7 @@ class Item:
         self.runner = runners.get(self.subject.runner)
         self.app = self.root / "app"
         self.mutations = sorted((self.root / "mutations").glob("*.patch"))
+        self.variants = sorted((self.root / "variants").glob("*.patch"))
         self.reference = self._one_file(self.root / "reference")
 
     def _one_file(self, directory):
@@ -63,9 +70,12 @@ def grade(item, candidate, prepared, keep=None):
         return keep / name if keep else None
 
     workspace = item.subject.workspace
+    reals = [(None, runners.REAL)]
+    reals += [(patch, f"{runners.REAL}+{patch.stem}") for patch in item.variants]
     runs = [
-        item.runner.run(candidate, item.app, None, runners.REAL, workspace,
-                        prepared, keep_dir=kept(runners.REAL))
+        item.runner.run(candidate, item.app, patch, name, workspace,
+                        prepared, keep_dir=kept(name))
+        for patch, name in reals
     ]
     for patch in item.mutations:
         runs.append(
@@ -77,7 +87,14 @@ def grade(item, candidate, prepared, keep=None):
 
 def report(item, candidate, runs):
     print(f"ITEM  {item.root}")
-    print(f"CAND  {candidate.relative_to(item.root)}")
+    # The learner's own file sits in the workspace, not under the item, so
+    # it's named as typed from the repo root instead.
+    for base in (item.root, subject.ROOT):
+        if candidate.is_relative_to(base):
+            print(f"CAND  {candidate.relative_to(base)}")
+            break
+    else:
+        print(f"CAND  {candidate}")
     print()
     # Wide enough for the longest name, so a long one can't run into its cell.
     width = max(28, *(len(run.environment) + 2 for run in runs))
@@ -95,12 +112,18 @@ def report(item, candidate, runs):
         print()
 
 
+def split(runs):
+    """The runs against a real app, then the runs against a mutation."""
+    reals = [run for run in runs if runners.is_real(run.environment)]
+    return reals, [run for run in runs if not runners.is_real(run.environment)]
+
+
 def conditions(runs, check_vectors):
     """Return a list of (label, ok) for each gate condition."""
-    real, mutants = runs[0], runs[1:]
+    reals, mutants = split(runs)
     results = [
         ("G1 the candidate does not object to the real app",
-         real.cell == verdict.SILENT),
+         bool(reals) and all(real.cell == verdict.SILENT for real in reals)),
         ("G2 the candidate catches every mutation",
          bool(mutants) and all(m.cell == verdict.CATCHES for m in mutants)),
     ]
@@ -231,9 +254,11 @@ def command_filter(args):
 
     runs = grade(item, item.reference, item.runner.prepare())
     report(item, item.reference, runs)
-    real, mutants = runs[0], runs[1:]
-    if real.cell != verdict.SILENT:
-        print(f"FILTER FAIL: the reference is {real.cell} against the real app,")
+    reals, mutants = split(runs)
+    objected = [real for real in reals if real.cell != verdict.SILENT]
+    if objected:
+        print(f"FILTER FAIL: the reference is {objected[0].cell} against "
+              f"{objected[0].environment},")
         print("so nothing it says about a mutation can be trusted.")
         return 1
 
