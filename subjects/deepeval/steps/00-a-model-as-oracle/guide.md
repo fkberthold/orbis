@@ -89,11 +89,14 @@ pm" and running the judged test three times, on 2026-11-06, gave this:
 |---|---|---|
 | looser: "check that the output states those hours and no others" | passed 3 of 3, scoring 0.8 to 1.0 | passed 3 of 3 |
 | the four above, which spell out the comparison | failed 2 of 3, passed once at 1.0 | passed 3 of 3 |
+| the four above, judged by gpt-5.4-mini instead | failed 9 of 9, at 0.0 | passed |
 
 With the looser steps, the judge's own reason quoted the policy's "noon to 5
 pm" and passed the 6 pm answer anyway. Spelling the comparison out helped, and
 it still let the wrong time through once in three runs. A pytest assertion on
-the same two strings would never do either.
+the same two strings would never do either. A model one step up, at about 2.6
+times the price a call, got it right every time, which is why the course's
+gate judges with gpt-5.4-mini.
 
 ## What changes when the oracle is a model
 
