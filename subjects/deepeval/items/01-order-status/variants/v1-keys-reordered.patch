@@ -1,0 +1,22 @@
+diff --git a/order_status.py b/order_status.py
+index 78b8789..ee6fbac 100644
+--- a/order_status.py
++++ b/order_status.py
+@@ -11,13 +11,13 @@ Run this file to print every recorded question with the bot's answer.
+ # One recorded answer per question, each the raw string the bot sent back.
+ RECORDED = {
+     "Where is order A-1042?":
+-        '{"order_id": "A-1042", "status": "shipped", "eta": "2026-11-12"}',
++        '{"status": "shipped", "eta": "2026-11-12", "order_id": "A-1042"}',
+     "When will order A-1077 arrive?":
+-        '{"order_id": "A-1077", "status": "processing", "eta": "2026-11-19"}',
++        '{"eta": "2026-11-19", "order_id": "A-1077", "status": "processing"}',
+     "Has order A-1103 been delivered yet?":
+-        '{"order_id": "A-1103", "status": "delivered", "eta": "2026-11-03"}',
++        '{"status": "delivered", "order_id": "A-1103", "eta": "2026-11-03"}',
+     "Where is order A-2000?":
+-        '{"order_id": "A-2000", "status": "not_found", "eta": null}',
++        '{"eta": null, "status": "not_found", "order_id": "A-2000"}',
+ }
+ 
+ QUESTIONS = tuple(RECORDED)

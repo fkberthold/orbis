@@ -84,11 +84,15 @@ def app_part(name, item, url):
     """
     runner = runner_of(item)
     mine = runner.mine_name(name)
+    workspace = subject.of_item(item).workspace
     return {
         "url": url,
+        "lead": list(runner.app_lead()),
         "mine": mine,
-        "workspace": _from_root(subject.of_item(item).workspace),
-        "commands": [list(row) for row in runner.app_commands(url, mine)],
+        "workspace": _from_root(workspace),
+        "commands": [
+            list(row) for row in runner.app_commands(url, mine, item / "app", workspace)
+        ],
     }
 
 

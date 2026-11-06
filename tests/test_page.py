@@ -8,6 +8,7 @@ what its reference says beyond reading the file.
 import json
 import pathlib
 import re
+import shutil
 import urllib.request
 
 import pytest
@@ -244,7 +245,39 @@ def test_the_last_verdict_shows_with_its_trace_commands(page: Page, server) -> N
     expect(page.locator(".orbis-status.rejected")).to_have_text("rejected")
 
 
-def test_a_subject_with_only_a_curriculum_gets_a_tab(page: Page, server) -> None:
+def test_a_subject_with_only_a_curriculum_gets_a_tab(page: Page, tmp_path) -> None:
+    """A course being planned has its curriculum and no subject.toml yet."""
+    subjects = tmp_path / "subjects"
+    shutil.copytree(
+        ROOT / "subjects", subjects,
+        ignore=shutil.ignore_patterns("node_modules", ".venv", "runs", ".deepeval"),
+    )
+    (subjects / "deepeval" / "subject.toml").unlink()
+    with orbis_page.Server(subjects, tmp_path / "reveals.jsonl", build_dir=tmp_path / "site") as running:
+        page.goto(running.base_url + "/")
+        page.locator(".md-tabs a", has_text="DeepEval").click()
+        expect(page.locator("article h1")).to_have_text(re.compile("The DeepEval curriculum"))
+
+
+DEEPEVAL_PRACTICE = "/deepeval/02-deterministic-metrics/01-order-status/"
+
+
+def test_the_deepeval_tab_shows_its_steps(page: Page, server) -> None:
     page.goto(server.base_url + "/")
     page.locator(".md-tabs a", has_text="DeepEval").click()
-    expect(page.locator("article h1")).to_have_text(re.compile("The DeepEval curriculum"))
+    steps = page.locator(COURSE)
+    expect(steps).to_have_count(12)
+    expect(steps.nth(2)).to_contain_text("Step 2, deterministic metrics")
+    steps.nth(2).locator("a[href*='01-order-status']").click()
+    expect(page.locator("article h1")).to_contain_text("Order status")
+
+
+def test_the_deepeval_practice_says_how_to_reach_the_bot(page: Page, server) -> None:
+    page.goto(server.base_url + DEEPEVAL_PRACTICE)
+    app = page.locator("#app")
+    expect(app).to_contain_text("The real bot's source is at")
+    expect(app).to_contain_text(
+        "PYTHONPATH=../items/01-order-status/app uv run deepeval test run"
+        " mine/test_01_order_status.py"
+    )
+    expect(page.locator(".margin", has_text="a test: known order")).to_have_count(1)

@@ -14,20 +14,31 @@ What a runner module provides, as the gate and page call it today:
     kept_traces(directory)         the traces a kept run left, for the page to list
     mine_name(item_name)           where the learner's own file goes in the workspace
     margin_for(text)               what kind of line one line of the answer is
-    app_commands(url, mine)        (what it's for, command) rows for the app panel
+    app_lead()                     the words either side of the app's link
+    app_commands(url, mine, app, workspace)
+                                   (what it's for, command) rows for the app panel
     trace_command(trace)           the command that opens one kept trace
 """
 
 import dataclasses
 import importlib
 
-# The real app's environment name, beside each mutation's patch stem.
+from .. import verdict
+
+# The real app's environment name, beside each mutation's patch stem. A real
+# variant is named after it, as real+<the variant's patch stem>.
 REAL = "real"
+
+
+def is_real(environment_name):
+    """Whether a run was against the real app or one of its real variants."""
+    return environment_name == REAL or environment_name.startswith(REAL + "+")
 
 # Keyed by the runner name subject.toml gives. Imported on first use, so a
 # subject's tooling is only loaded when that subject is.
 _RUNNERS = {
     "playwright": "orbis.runners.playwright",
+    "deepeval": "orbis.runners.deepeval",
 }
 
 
@@ -63,3 +74,23 @@ class Run:
     @property
     def vector_text(self):
         return " ".join(self.vector) if self.tests else "(none)"
+
+
+def classify(returncode, outcomes, expects, asserted_in_source):
+    """The cell one run lands in, and a note saying why.
+
+    expects is how many assertions the run was seen to execute, by whatever
+    channel the runner reads. asserted_in_source is the second channel, a scan
+    of the file for an assertion the first can't see. Either one keeps a pass
+    out of vacuous.
+    """
+    if outcomes is None or not outcomes:
+        return verdict.DID_NOT_RUN, f"the test run exited {returncode} with no usable report"
+    if any(outcome.outcome == verdict.ERROR for outcome in outcomes):
+        return verdict.DID_NOT_RUN, "a test errored rather than reaching a verdict"
+    if any(outcome.outcome == verdict.FAIL for outcome in outcomes):
+        failed = [o.name for o in outcomes if o.outcome == verdict.FAIL]
+        return verdict.CATCHES, "failed: " + ", ".join(failed)
+    if expects == 0 and not asserted_in_source:
+        return verdict.VACUOUS, "passed without asserting anything"
+    return verdict.SILENT, f"passed, {expects} assertion(s) executed"

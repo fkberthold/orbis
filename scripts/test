@@ -54,8 +54,21 @@ item_name() {
 }
 printf 'items: %d\n\n' "${#ITEMS[@]}"
 
+# What a candidate file is called depends on the subject's runner, which its
+# subject.toml names.
+source_glob() {
+  local subject="${1%%/items/*}"
+  local runner
+  runner=$(sed -n 's/^runner *= *"\(.*\)"/\1/p' "${subject}/subject.toml")
+  case "$runner" in
+    playwright) printf '*.spec.ts' ;;
+    deepeval) printf 'test_*.py' ;;
+    *) printf 'no-runner-called-%s' "$runner" ;;
+  esac
+}
+
 # ---------------------------------------------------------------------------
-# TIER 1, no browser. Structure, then whether every mutation still applies.
+# TIER 1, no browser. Structure, then whether every patch still applies.
 #
 # A mutation is a patch rather than a fork so the diff states what broke, and
 # the cost of that choice is that a patch rots when the app moves. This tier is
@@ -73,13 +86,14 @@ for item in "${ITEMS[@]}"; do
     continue
   fi
 
-  refs=$(find "${item}/reference" -name '*.spec.ts' | wc -l)
+  glob="$(source_glob "$item")"
+  refs=$(find "${item}/reference" -name "$glob" | wc -l)
   if [ "$refs" -ne 1 ]; then
     bad "${name}: reference/ holds ${refs} files, it must hold exactly one"
     continue
   fi
 
-  cands=$(find "${item}/candidates" -name '*.spec.ts' | wc -l)
+  cands=$(find "${item}/candidates" -name "$glob" | wc -l)
   if [ "$cands" -eq 0 ]; then
     bad "${name}: candidates/ is empty, so the gate can never be watched failing"
     continue
@@ -91,27 +105,34 @@ for item in "${ITEMS[@]}"; do
     continue
   fi
 
-  # The TypeScript isn't parsed here. One candidate per item is broken on
-  # purpose, and Playwright is what loads the rest, so tier 2 is where a file
-  # that won't load shows up, as did-not-run.
+  # The candidates aren't parsed here. One per item is broken on purpose, and
+  # the runner is what loads the rest, so tier 2 is where a file that won't
+  # load shows up, as did-not-run.
 
-  # Every patch has to still apply to the app as it stands now.
+  # Every patch has to still apply to the app as it stands now, a real
+  # variant's included. A variant that stopped applying would leave G1
+  # holding the candidate to one real app fewer, and nothing would say so.
+  vars=0
+  if [ -d "${item}/variants" ]; then
+    vars=$(find "${item}/variants" -name '*.patch' | wc -l)
+  fi
   rot=""
   work=$(mktemp -d)
   cp -r "${item}/app" "${work}/app"
   while IFS= read -r patch; do
     if ! (cd "${work}/app" && git apply --check --whitespace=nowarn "$patch") 2>/dev/null; then
-      rot="${rot} $(basename "$patch")"
+      rot="${rot} $(basename "$(dirname "$patch")")/$(basename "$patch")"
     fi
-  done < <(find "$(cd "${item}/mutations" && pwd)" -name '*.patch' | sort)
+  done < <(find "$(cd "$item" && pwd)" -mindepth 2 -maxdepth 2 -name '*.patch' \
+             \( -path '*/mutations/*' -o -path '*/variants/*' \) | sort)
   rm -rf "$work"
 
   if [ -n "$rot" ]; then
-    bad "${name}: mutation(s) no longer apply:${rot}"
+    bad "${name}: patch(es) no longer apply:${rot}"
     continue
   fi
 
-  ok "${name}: whole, ${refs} reference, ${cands} candidate(s), ${pats} mutation(s), all applying"
+  ok "${name}: whole, ${refs} reference, ${cands} candidate(s), ${pats} mutation(s), ${vars} real variant(s), all applying"
 done
 
 if [ "$FAST" = "1" ]; then
@@ -138,6 +159,16 @@ WORKSPACE=subjects/playwright/workspace
 if [ ! -d "${WORKSPACE}/node_modules/@playwright/test" ]; then
   if ! PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci --prefix "$WORKSPACE" --no-audit --no-fund >/dev/null 2>&1; then
     echo "test: npm ci --prefix ${WORKSPACE} failed, so no spec can run." >&2
+    exit 2
+  fi
+fi
+
+# The DeepEval tests run under that subject's uv workspace, installed from its
+# lockfile the first time for the same reason.
+DE_WORKSPACE=subjects/deepeval/workspace
+if [ -f "${DE_WORKSPACE}/uv.lock" ] && [ ! -x "${DE_WORKSPACE}/.venv/bin/deepeval" ]; then
+  if ! uv sync --quiet --frozen --project "$DE_WORKSPACE" >/dev/null 2>&1; then
+    echo "test: uv sync --project ${DE_WORKSPACE} failed, so no DeepEval test can run." >&2
     exit 2
   fi
 fi

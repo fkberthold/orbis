@@ -1,0 +1,13 @@
+diff --git a/order_status.py b/order_status.py
+index 78b8789..9a825d4 100644
+--- a/order_status.py
++++ b/order_status.py
+@@ -17,7 +17,7 @@ RECORDED = {
+     "Has order A-1103 been delivered yet?":
+         '{"order_id": "A-1103", "status": "delivered", "eta": "2026-11-03"}',
+     "Where is order A-2000?":
+-        '{"order_id": "A-2000", "status": "not_found", "eta": null}',
++        '{"order_id": "A-2000", "status": "shipped", "eta": "2026-11-15"}',
+ }
+ 
+ QUESTIONS = tuple(RECORDED)

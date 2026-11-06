@@ -16,6 +16,7 @@ subjects/*/workspace/node_modules/
 subjects/*/workspace/runs/
 subjects/*/workspace/test-results/
 subjects/*/workspace/playwright-report/
+subjects/*/workspace/.deepeval/
 
 # The reading site orbis.site builds. It gets rebuilt from subjects/ on demand.
 build/

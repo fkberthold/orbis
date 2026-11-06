@@ -1,0 +1,13 @@
+diff --git a/order_status.py b/order_status.py
+index 78b8789..2c02706 100644
+--- a/order_status.py
++++ b/order_status.py
+@@ -13,7 +13,7 @@ RECORDED = {
+     "Where is order A-1042?":
+         '{"order_id": "A-1042", "status": "shipped", "eta": "2026-11-12"}',
+     "When will order A-1077 arrive?":
+-        '{"order_id": "A-1077", "status": "processing", "eta": "2026-11-19"}',
++        '{"order_id": "A-1071", "status": "processing", "eta": "2026-11-19"}',
+     "Has order A-1103 been delivered yet?":
+         '{"order_id": "A-1103", "status": "delivered", "eta": "2026-11-03"}',
+     "Where is order A-2000?":

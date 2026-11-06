@@ -12,7 +12,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 def copy_subjects(dest):
     shutil.copytree(
         ROOT / "subjects", dest,
-        ignore=shutil.ignore_patterns("node_modules", "runs", "test-results"),
+        ignore=shutil.ignore_patterns("node_modules", ".venv", ".deepeval", "runs", "test-results"),
     )
     return dest
 
@@ -47,4 +47,4 @@ def test_no_reference_reaches_the_docs_tree(tmp_path):
     out = tmp_path / "build"
     site.assemble(ROOT / "subjects", out)
     names = {p.name for p in (out / "docs").rglob("*")}
-    assert not any(name.endswith(".spec.ts") for name in names)
+    assert not any(name.endswith(".spec.ts") or name.startswith("test_") for name in names)

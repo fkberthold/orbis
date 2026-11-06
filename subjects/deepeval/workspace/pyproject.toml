@@ -1,0 +1,14 @@
+# The learner's DeepEval workspace. Tests run from here, so `deepeval` and
+# its pytest plugin resolve, and the gate stages every candidate under runs/.
+
+[project]
+name = "orbis-deepeval-learner"
+version = "0.1.0"
+description = "Where the learner's DeepEval tests run."
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "deepeval==4.3.2",
+]
+
+[tool.uv]
+package = false

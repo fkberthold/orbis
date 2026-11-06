@@ -47,8 +47,7 @@ function drawApp(box, data) {
   const app = data.app;
   const link = el("a", { href: app.url, target: "_blank", rel: "noopener", text: app.url });
   box.replaceChildren(
-    el("p", {}, ["The real app is running at ", link,
-      ". Poke at it, watch what changes and when, and write your tests against it."]),
+    el("p", {}, [app.lead[0], link, app.lead[1]]),
     el("p", {}, ["Write your tests in ", code(app.workspace + "/" + app.mine),
       ". In a shell, after ", code("source env.sh"), " and ", code("cd " + app.workspace), ":"]),
     table(["for", "run"], app.commands.map(([what, command]) => [document.createTextNode(what), code(command)])),
