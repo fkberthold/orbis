@@ -21,6 +21,7 @@ items = ["01-order-status"]
 
 [[step]]
 dir = "03-g-eval"
+items = ["02-refund-policy"]
 
 [[step]]
 dir = "04-thresholds-and-noise"

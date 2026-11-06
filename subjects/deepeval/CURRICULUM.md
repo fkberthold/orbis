@@ -59,9 +59,24 @@ questions, and good, reworded, invented, dropped and off-topic answers.
 | dolphin3:8b, local | one run only | no, invented facts scored above good answers | |
 | gpt-5.4-nano, Poe | scores move up to 0.2 | yes, on G-Eval with pinned steps at 0.75 | ~9 min, ~$0.03 |
 
-So the judge is gpt-5.4-nano through Poe. Its scores move between runs, so the
-gate runs each candidate several times and needs the same cell every time. The
+So the judge was gpt-5.4-nano through Poe. Its scores move between runs, so the
+gate runs each candidate three times and needs the same cell every time. The
 reference also has to clear every break by a margin, not just the threshold.
+
+Nano didn't hold up past that first fixture. On 2026-11-06 it was measured
+again on the refund-policy item and on a one-line fact check, the library's
+Sunday closing time, 132 measurements a judge and 3 runs each.
+
+| judge | wrong answers passed | correct answers failed | per call |
+|---|---|---|---|
+| gpt-5.4-nano | 6 pm for 5 pm, 3 of 3 with loose steps | 0.6 on a correct refund answer, 0.0 courtesy on a polite one | $0.00023 |
+| claude-haiku-5.5 | none | 0.6 courtesy on a polite answer, and 4 calls errored | $0.00026 |
+| gpt-5.4-mini | none | none, every score 0.0 or 1.0 | $0.00060 |
+
+So the judge is gpt-5.4-mini now. It costs about 2.6 times as much a call, and
+a selfcheck of the refund-policy item came to about $0.23. I think that's the
+cheaper judge in the end, since a reference that can't hold its own cell costs
+an afternoon.
 
 The same run is step 5's lesson in advance. With both judges, answer relevancy
 passed invented and dropped facts, because they stay on topic. Faithfulness

@@ -44,3 +44,46 @@ def test_a_variant_is_not_counted_as_a_mutation():
     ]
     results = dict(gate.conditions(runs, check_vectors=True))
     assert all(results.values())
+
+
+def judged(name, cell, scores, outcome=verdict.PASS):
+    """A judged run with one test, scored once."""
+    test = runners.TestOutcome("t: Follows The Policy", outcome, "", list(scores), 0.75)
+    return runners.Run(name, cell, [test], 1, "passed")
+
+
+def test_repeats_that_agree_keep_every_score():
+    merged = gate.merge([judged(runners.REAL, verdict.SILENT, [s]) for s in (1.0, 0.9, 1.0)])
+    assert merged.cell == verdict.SILENT
+    assert merged.tests[0].scores == [1.0, 0.9, 1.0]
+
+
+def test_repeats_that_disagree_are_did_not_run_and_name_the_flip():
+    merged = gate.merge([
+        judged("m2", verdict.CATCHES, [0.0], verdict.FAIL),
+        judged("m2", verdict.SILENT, [0.8]),
+        judged("m2", verdict.CATCHES, [0.0], verdict.FAIL),
+    ])
+    assert merged.cell == verdict.DID_NOT_RUN
+    assert "Flipped: t: Follows The Policy" in merged.note
+    assert "run 2 silent" in merged.note
+
+
+def test_g4_wants_a_margin_on_both_sides_of_the_line():
+    def g4(runs):
+        return dict(gate.conditions(runs, check_vectors=True, judged=True))[
+            f"G4 every judged score is {gate.MARGIN:.2f} clear of its threshold"]
+
+    clear = [judged(runners.REAL, verdict.SILENT, [0.9, 1.0]),
+             judged("m1", verdict.CATCHES, [0.0, 0.6], verdict.FAIL)]
+    assert g4(clear)
+    # 0.8 passes 0.75, and that's the trouble. It's one judge's mood away.
+    assert not g4([judged(runners.REAL, verdict.SILENT, [1.0, 0.8]), clear[1]])
+    assert not g4([clear[0], judged("m1", verdict.CATCHES, [0.0, 0.7], verdict.FAIL)])
+
+
+def test_g4_fails_a_judged_reference_with_no_judged_score():
+    runs = [run(runners.REAL, verdict.SILENT, [verdict.PASS]),
+            run("m1", verdict.CATCHES, [verdict.FAIL])]
+    results = dict(gate.conditions(runs, check_vectors=True, judged=True))
+    assert not results[f"G4 every judged score is {gate.MARGIN:.2f} clear of its threshold"]

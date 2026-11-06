@@ -10,6 +10,11 @@ its directory on PYTHONPATH. Nothing is served, and nothing a run starts may
 reach a model or Confident AI. The keys are blanked, telemetry and dotenv are
 switched off, and where the box allows it the run gets a network namespace of
 its own with no network in it.
+
+A judged run is the one exception, and it's a narrow one. It keeps the empty
+network namespace and gets a Unix socket to the judge bridge in judge.py,
+which forwards chat completions to Poe and nothing else. The pytest plugin in
+judge_plugin/ pins every metric's judge to that socket.
 """
 
 import ast
@@ -24,7 +29,9 @@ import xml.etree.ElementTree as ET
 
 from .. import verdict
 from ..environment import MutationError, materialize
-from . import Run, TestOutcome, classify
+from . import Run, TestOutcome, classify, judge
+
+PLUGIN_DIR = pathlib.Path(__file__).resolve().parent / "judge_plugin"
 
 RUN_TIMEOUT_S = 300
 SOURCE_GLOB = "test_*.py"
@@ -37,6 +44,9 @@ QUIET = {
     "DEEPEVAL_DISABLE_DOTENV": "1",
     "OPENAI_API_KEY": "",
     "CONFIDENT_API_KEY": "",
+    # The judge's key stays with the bridge outside the run, so a test that
+    # prints its environment prints no key.
+    judge.KEY_VARIABLE: "",
 }
 
 
@@ -111,6 +121,7 @@ def _outcomes(tests, cases):
                 verdict.PASS if metric.get("success") and not metric.get("error")
                 else verdict.FAIL,
                 metric.get("error") or metric.get("reason") or "",
+                **_judged_score(metric),
             )
             for metric in cases.get(name, [])
         ]
@@ -124,6 +135,19 @@ def _outcomes(tests, cases):
             outcomes.append(TestOutcome(name, kind, message))
     outcomes.sort(key=lambda outcome: outcome.name)
     return outcomes
+
+
+def _judged_score(metric):
+    """A judged metric's score and threshold, as TestOutcome takes them.
+
+    The run file names an evaluationModel only for a metric a judge scored. A
+    metric decided in code gets nothing here, since its 0 or 1 isn't a
+    measurement that can drift.
+    """
+    if not metric.get("evaluationModel") or metric.get("score") is None:
+        return {}
+    return {"scores": [float(metric["score"])],
+            "threshold": float(metric.get("threshold") or 0)}
 
 
 def has_assert_statement(source):
@@ -153,10 +177,11 @@ def _first_error(output):
 
 
 def run(candidate, app_dir, patch, environment_name, workspace, prepared,
-        keep_dir=None, timeout=RUN_TIMEOUT_S):
+        keep_dir=None, timeout=RUN_TIMEOUT_S, judged=False):
     """Execute candidate against one environment and return a Run.
 
-    prepared is what prepare() returned, the command a run starts under.
+    prepared is what prepare() returned, the command a run starts under. A
+    judged run loads the plugin that pins the judge and gets the socket to it.
     """
     candidate = pathlib.Path(candidate).resolve()
     workspace = pathlib.Path(workspace).resolve()
@@ -189,10 +214,20 @@ def run(candidate, app_dir, patch, environment_name, workspace, prepared,
         environment.update(QUIET)
         environment["PYTHONPATH"] = str(app)
         environment["UV_OFFLINE"] = "1"
+        plugin = []
+        if judged:
+            bridge = judge.bridge()
+            environment["PYTHONPATH"] += os.pathsep + str(PLUGIN_DIR)
+            environment["ORBIS_JUDGE_SOCKET"] = bridge.socket
+            environment["ORBIS_JUDGE_MODEL"] = bridge.model
+            plugin = ["-p", "orbis_judge"]
+        # No -c. DeepEval's cache keys on the test case alone, not the judge or
+        # its version, so a cached run would repeat a verdict rather than
+        # measure it again, and the repeats are what show a verdict holds.
         command = [
             *prepared, "uv", "run", "--project", str(workspace), "--frozen",
             "--quiet", "deepeval", "test", "run", candidate.name,
-            f"--junitxml={report}", "-p", "no:cacheprovider",
+            f"--junitxml={report}", "-p", "no:cacheprovider", *plugin,
         ]
         try:
             finished = subprocess.run(
@@ -225,6 +260,11 @@ def run(candidate, app_dir, patch, environment_name, workspace, prepared,
         shutil.rmtree(stage, ignore_errors=True)
         if keep_dir is None:
             shutil.rmtree(work, ignore_errors=True)
+
+
+def judge_used():
+    """What the judge was asked for so far in this process, or None."""
+    return judge.used()
 
 
 def kept_traces(directory):

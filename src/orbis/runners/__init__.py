@@ -10,7 +10,10 @@ What a runner module provides, as the gate and page call it today:
     sources(directory)             the candidate files in a directory, sorted
     prepare()                      what every run needs set up first, resolved once
     run(candidate, app_dir, patch, environment_name, workspace, prepared,
-        keep_dir=None)             one candidate against one environment, as a Run
+        keep_dir=None, judged=False)
+                                   one candidate against one environment, as a Run.
+                                   judged is only passed to a runner whose item
+                                   says it's judged, so only DeepEval takes it
     kept_traces(directory)         the traces a kept run left, for the page to list
     mine_name(item_name)           where the learner's own file goes in the workspace
     margin_for(text)               what kind of line one line of the answer is
@@ -57,6 +60,11 @@ class TestOutcome:
     name: str
     outcome: str
     message: str = ""
+    # A judged metric's score, one per repeat, and the line it had to clear.
+    # Both stay empty for a check decided in code, which has no score worth
+    # a margin.
+    scores: list = dataclasses.field(default_factory=list)
+    threshold: float | None = None
 
 
 @dataclasses.dataclass
