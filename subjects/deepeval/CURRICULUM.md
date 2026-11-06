@@ -1,4 +1,4 @@
-# The DeepEval curriculum, a draft for review
+# The DeepEval curriculum
 
 **The goal** is to own a real LLM-evaluation suite at work. That decides what
 counts as fundamental. Choosing metrics, writing judge criteria, setting
@@ -115,15 +115,12 @@ G-Eval criteria, thresholds, RAG metrics, datasets and custom metrics. A drill
 only enters the queue once the step that teaches it is done, and every drill
 names that step by path.
 
-## Open questions for Frank
+## Settled with Frank, 2026-11-06
 
-1. **Repeats.** A hosted judge's scores move, so the gate runs each candidate
-   several times. Three runs per grade costs about $0.10 and half an hour on
-   the measured fixture. Is three enough, or should it be five?
-2. **Step 9.** Conversational and agent metrics are a large surface. Keep it,
-   cut it, or move it after the capstone?
-3. **Step 8 ungraded.** A broken copy of an app can't judge a judge config, so
-   it gets a worked version behind the reveal, as Playwright's config step
-   did. Does that match what you want?
-4. **Confident AI.** The guides would say to skip every hosted-platform
-   section. Is any of it in use at work, so worth teaching?
+1. **Three repeats.** The gate runs each candidate three times against every
+   environment and needs the same cell all three times.
+2. **Step 9 stays.** Conversational and agent metrics are part of the course.
+3. **Step 8 is ungraded.** It gets a worked judge config behind the
+   line-by-line reveal, and the learner checks their own against it.
+4. **No Confident AI.** It isn't used at work, so the guides say to skip every
+   hosted-platform section, and nothing in the course logs in to it.
